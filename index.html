@@ -153,6 +153,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--champ)}
     <nav class="abas" id="abas">
       <button type="button" data-aba="painel" class="on">Painel</button>
       <button type="button" data-aba="pedidos">Pedidos</button>
+      <button type="button" data-aba="campanha">Campanha</button>
       <button type="button" data-aba="estoque">Estoque e preços</button>
       <button type="button" data-aba="loja">Loja</button>
       <button type="button" data-aba="arcas">Arcas</button>
@@ -179,6 +180,23 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--champ)}
     <section class="aba" id="aba-pedidos">
       <div class="cab"><div><h2>Pedidos</h2><p>Tudo o que chega pelo site: Arcas e loja.</p></div><button class="btn sec peq" type="button" id="b-rec-ped">Atualizar</button></div>
       <div class="lista" id="lista-pedidos"></div>
+    </section>
+    <section class="aba" id="aba-campanha">
+      <div class="cab"><div><h2>Campanha 10% OFF</h2><p>Quem pegou o cupom no site: um desconto por deixar o WhatsApp e mais um por informar o Instagram.</p></div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn sec peq" type="button" id="b-cp-csv">Baixar planilha</button><button class="btn sec peq" type="button" id="b-cp-rec">Atualizar</button></div></div>
+      <div class="kpis" id="cp-kpis"></div>
+      <div class="card" style="margin-top:14px">
+        <div class="grid2">
+          <label class="chk"><input type="checkbox" id="cp-ativa"> Campanha ativa (mostra o pop-up no site)</label>
+          <div></div>
+          <div class="campo"><label for="cp-base">Desconto por deixar o WhatsApp (%)</label><input type="number" id="cp-base" min="0" max="50" step="1"></div>
+          <div class="campo"><label for="cp-ig">Desconto extra por informar o Instagram (%)</label><input type="number" id="cp-ig" min="0" max="50" step="1"></div>
+        </div>
+        <div style="margin-top:14px;display:flex;justify-content:flex-end"><button class="btn" type="button" id="b-cp-salvar">Salvar campanha</button></div>
+        <p class="aviso" style="margin-top:14px">O Instagram não deixa conferir automaticamente quem segue a conta. Toque em "Ver perfil" para abrir o Instagram da pessoa e marque se ela segue a @ara.cristais. Os cupons já entregues continuam valendo mesmo se a campanha for desligada.</p>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin:18px 0 12px"><input type="text" id="cp-busca" placeholder="Buscar por nome, WhatsApp, @ ou cupom" style="max-width:360px"><select id="cp-filtro" style="width:auto"><option value="">Todos</option><option value="ativo">Cupom ainda não usado</option><option value="usado">Cupom usado</option><option value="ig">Informaram o Instagram</option><option value="conferir">Instagram a conferir</option><option value="novidades">Aceitam novidades</option></select></div>
+      <div class="lista" id="lista-leads"></div>
     </section>
     <section class="aba" id="aba-estoque">
       <div class="cab"><div><h2>Estoque e preços</h2><p>Edite direto na lista: custo, preço de venda e quantidade. A margem é calculada na hora.</p></div>
@@ -308,7 +326,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--champ)}
 var SB_URL='https://wxkwkfkidigeuupaajre.supabase.co',SB_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Ind4a3drZmtpZGlnZXV1cGFhanJlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcxNjAzOTUsImV4cCI6MjA5MjczNjM5NX0.HQqpN2EJqRc-3l7DNna659pxn_keGLiTK_p3rObHW7w';
 var DEF=JSON.parse(document.getElementById('def').textContent);
 var sb=window.supabase.createClient(SB_URL,SB_KEY);
-var DB={produtos:[],posts:[],config:{},pedidos:[],privado:{}};
+var DB={produtos:[],posts:[],config:{},pedidos:[],privado:{},leads:[]};
 var prodAtual=null,postAtual=null,fotoProd=null,fotoPost=null,fotosArca={};
 var ARCAS_K=['essencial','plena','atelie'];
 
@@ -317,7 +335,7 @@ function esc(t){return String(t==null?'':t).replace(/[&<>"]/g,function(c){return
 function brl(v){return Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});}
 function toast(msg,erro){var t=$('toast');t.textContent=msg;t.className=erro?'erro':'';t.style.display='block';clearTimeout(window.__tt);window.__tt=setTimeout(function(){t.style.display='none';},3200);}
 function slugify(t){return String(t||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,70);}
-function siteBase(){var c=DB.config.seo||{};return (c.dominio||'').replace(/\/$/,'')||'https://aracristais.com.br';}
+function siteBase(){var c=DB.config.seo||{};return (c.dominio||'').replace(/\/$/,'')||'https://www.aracristais.com.br';}
 
 /* ---------- login ---------- */
 async function entrar(e){e.preventDefault();$('login-msg').textContent='Entrando...';
@@ -340,13 +358,14 @@ function abrirAba(a){document.querySelectorAll('#abas button').forEach(function(
  document.querySelectorAll('.aba').forEach(function(s){s.classList.toggle('on',s.id==='aba-'+a);});}
 
 /* ---------- carregar ---------- */
-async function carregarTudo(){var r=await Promise.allSettled([sb.from('ara_produtos').select('*').order('ordem'),sb.from('ara_posts').select('*').order('ordem'),sb.from('ara_config').select('*'),sb.from('ara_pedidos').select('*').order('criado_em',{ascending:false}).limit(300),sb.from('ara_privado').select('*')]);
+async function carregarTudo(){var r=await Promise.allSettled([sb.from('ara_produtos').select('*').order('ordem'),sb.from('ara_posts').select('*').order('ordem'),sb.from('ara_config').select('*'),sb.from('ara_pedidos').select('*').order('criado_em',{ascending:false}).limit(300),sb.from('ara_privado').select('*'),sb.from('ara_leads').select('*').order('criado_em',{ascending:false}).limit(5000)]);
  if(r[0].status==='fulfilled'&&!r[0].value.error)DB.produtos=r[0].value.data||[];
  if(r[1].status==='fulfilled'&&!r[1].value.error)DB.posts=r[1].value.data||[];
  if(r[2].status==='fulfilled'&&!r[2].value.error){DB.config={};(r[2].value.data||[]).forEach(function(x){DB.config[x.chave]=x.valor;});}
  if(r[3].status==='fulfilled'&&!r[3].value.error)DB.pedidos=r[3].value.data||[];
  if(r[4].status==='fulfilled'&&!r[4].value.error){DB.privado={};(r[4].value.data||[]).forEach(function(x){DB.privado[x.chave]=x.valor;});}
- renderPedidos();renderProdutos();renderPosts();renderArcas();renderConfig();renderEstoque();renderFrete();renderPagamento();carregarPainel();verificarPendentes();}
+ if(r[5]&&r[5].status==='fulfilled'&&!r[5].value.error)DB.leads=r[5].value.data||[];
+ renderPedidos();renderProdutos();renderPosts();renderArcas();renderConfig();renderEstoque();renderFrete();renderPagamento();renderCampanha();carregarPainel();verificarPendentes();}
 
 /* ---------- pedidos ---------- */
 var STATUS=['novo','aguardando pagamento','pago','em atendimento','enviado','concluído','pagamento recusado','estornado','cancelado'];
@@ -572,10 +591,10 @@ async function carregarPainel(){var dias=Number($('pn-periodo').value);var ini=n
  var r=await sb.from('ara_visitas').select('ts,sessao,evento,pagina,termo,resultados,cidade,estado,dispositivo,origem').gte('ts',ini.toISOString()).order('ts',{ascending:false}).limit(20000);
  PN_DADOS=r.error?[]:(r.data||[]);renderPainel(dias,ini);}
 function renderPainel(dias,ini){var d=PN_DADOS;var sess={};d.forEach(function(x){if(!sess[x.sessao])sess[x.sessao]=x;});var S=Object.keys(sess).map(function(k){return sess[k];});
- var pv=d.filter(function(x){return x.evento==='pagina'||x.evento==='produto';}).length;var buscas=d.filter(function(x){return x.evento==='busca';});var chk=d.filter(function(x){return x.evento==='checkout';});
+ var pv=d.filter(function(x){return x.evento==='pagina'||x.evento==='produto';}).length;var buscas=d.filter(function(x){return x.evento==='busca';});var chk=d.filter(function(x){return x.evento==='checkout';});var cWa=d.filter(function(x){return x.evento==='whatsapp';}).length,cIg=d.filter(function(x){return x.evento==='instagram';}).length,cCp=d.filter(function(x){return x.evento==='cupom';}).length;
  var peds=DB.pedidos.filter(function(p){return new Date(p.criado_em)>=ini;});var pagos=peds.filter(function(p){return p.status==='pago'||p.status==='enviado'||p.status==='concluído';});
  var fat=pagos.reduce(function(s,p){return s+Number(p.total||0);},0);var conv=S.length?(pagos.length/S.length*100):0;
- $('pn-kpis').innerHTML='<div><b>'+S.length+'</b><span>visitantes</span></div><div><b>'+pv+'</b><span>páginas vistas</span></div><div><b>'+chk.length+'</b><span>começaram a comprar</span></div><div><b>'+peds.length+'</b><span>pedidos</span></div><div><b>'+pagos.length+'</b><span>pagos</span></div><div><b>'+brl(fat)+'</b><span>faturado</span></div><div><b>'+conv.toFixed(1).replace('.',',')+'%</b><span>conversão</span></div>';
+ $('pn-kpis').innerHTML='<div><b>'+S.length+'</b><span>visitantes</span></div><div><b>'+pv+'</b><span>páginas vistas</span></div><div><b>'+chk.length+'</b><span>começaram a comprar</span></div><div><b>'+peds.length+'</b><span>pedidos</span></div><div><b>'+pagos.length+'</b><span>pagos</span></div><div><b>'+brl(fat)+'</b><span>faturado</span></div><div><b>'+conv.toFixed(1).replace('.',',')+'%</b><span>conversão</span></div><div><b>'+cWa+'</b><span>cliques no WhatsApp</span></div><div><b>'+cIg+'</b><span>cliques no Instagram</span></div><div><b>'+cCp+'</b><span>pegaram o cupom</span></div>';
  var porDia={};for(var i=0;i<dias;i++){var dd=new Date(ini);dd.setDate(ini.getDate()+i);porDia[dd.toISOString().slice(0,10)]={};}
  d.forEach(function(x){var k=new Date(x.ts);k=new Date(k.getTime()-3*3600e3).toISOString().slice(0,10);if(porDia[k])porDia[k][x.sessao]=1;});
  var ks=Object.keys(porDia).sort();var mx=Math.max(1,Math.max.apply(null,ks.map(function(k){return Object.keys(porDia[k]).length;})));
@@ -588,6 +607,44 @@ function renderPainel(dias,ini){var d=PN_DADOS;var sess={};d.forEach(function(x)
  var bl=contar(buscas,function(x){return String(x.termo||'').toLowerCase().trim()+(x.resultados===0?' (sem resultado)':'');});
  rank('pn-buscas',bl,0,'Ninguém usou a busca da loja ainda.');}
 
+
+/* ---------- campanha 10% OFF (CRM dos cadastros do pop-up) ---------- */
+function cpConfig(){var c=DB.config.campanha||{};return {ativa:c.ativa!==false,base:c.base==null?5:Number(c.base),instagram:c.instagram==null?5:Number(c.instagram),perfil:c.perfil||'ara.cristais'};}
+function cpWhats(l){var wz=String(l.whatsapp_digitos||l.whatsapp||'').replace(/\D/g,'');if(wz&&wz.length<=11)wz='55'+wz;return wz;}
+function renderCampanha(){var c=cpConfig();$('cp-ativa').checked=c.ativa;$('cp-base').value=c.base;$('cp-ig').value=c.instagram;
+ var L=DB.leads||[];var ig=L.filter(function(l){return l.instagram;});var usados=L.filter(function(l){return l.status==='usado';});
+ var segue=L.filter(function(l){return l.seguiu_verificado===true;});var conferir=ig.filter(function(l){return l.seguiu_verificado==null;});
+ var sete=Date.now()-7*864e5;
+ $('cp-kpis').innerHTML='<div><b>'+L.length+'</b><span>cadastros</span></div><div><b>'+L.filter(function(l){return new Date(l.criado_em).getTime()>=sete;}).length+'</b><span>nos últimos 7 dias</span></div><div><b>'+ig.length+'</b><span>informaram o Instagram</span></div><div><b>'+segue.length+'</b><span>seguem (conferido)</span></div><div><b>'+conferir.length+'</b><span>a conferir</span></div><div><b>'+usados.length+'</b><span>cupons usados</span></div><div><b>'+(L.length?(usados.length/L.length*100).toFixed(1).replace('.',','):'0')+'%</b><span>viraram compra</span></div>';
+ renderLeads();}
+function cpFiltrados(){var q=String($('cp-busca').value||'').toLowerCase().trim(),f=$('cp-filtro').value;
+ return (DB.leads||[]).filter(function(l){if(f==='ativo'&&l.status!=='ativo')return false;if(f==='usado'&&l.status!=='usado')return false;if(f==='ig'&&!l.instagram)return false;if(f==='conferir'&&!(l.instagram&&l.seguiu_verificado==null))return false;if(f==='novidades'&&!l.aceita_novidades)return false;
+  if(!q)return true;return [l.nome,l.whatsapp,l.whatsapp_digitos,l.instagram,l.cupom].join(' ').toLowerCase().indexOf(q.replace(/^@/,''))>=0;});}
+function renderLeads(){var el=$('lista-leads'),L=cpFiltrados();
+ if(!L.length){el.innerHTML='<div class="vazio">'+((DB.leads||[]).length?'Nenhum cadastro com esse filtro.':'Ninguém pegou o cupom ainda. Os cadastros do pop-up do site aparecem aqui.')+'</div>';return;}
+ el.innerHTML=L.map(function(l){var d=new Date(l.criado_em),wz=cpWhats(l),primeiro=String(l.nome||'').split(' ')[0];
+  var msg='Olá'+(primeiro?', '+primeiro:'')+'! Aqui é da ARA. O seu cupom '+l.cupom+' de '+l.pct+'% está garantido para a sua primeira compra: https://www.aracristais.com.br';
+  var st=l.status==='usado'?'<span class="pill ok">cupom usado'+(l.usado_em?' em '+new Date(l.usado_em).toLocaleDateString('pt-BR'):'')+'</span>':(l.status==='cancelado'?'<span class="pill no">cupom cancelado</span>':'<span class="pill">cupom não usado</span>');
+  return '<div class="card ped"><div class="l1"><span class="it">'+esc(l.nome||'(sem nome)')+'</span><span><b style="color:var(--champ);font-weight:500">'+esc(l.cupom)+'</b> · '+l.pct+'% OFF</span></div>'+
+  '<div class="mt">'+d.toLocaleDateString('pt-BR')+' '+d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'})+' · '+esc(l.whatsapp)+(l.instagram?' · <a href="https://instagram.com/'+encodeURIComponent(l.instagram)+'" target="_blank" rel="noopener">@'+esc(l.instagram)+'</a>':' · sem Instagram')+(l.origem?' · veio de '+esc(l.origem):'')+'</div>'+
+  '<div class="mt">'+st+(l.aceita_novidades?'<span class="pill ok">aceita novidades</span>':'')+(l.instagram?(l.seguiu_verificado===true?'<span class="pill ok">segue a @'+esc(cpConfig().perfil)+'</span>':(l.seguiu_verificado===false?'<span class="pill no">não segue</span>':'<span class="pill">Instagram a conferir</span>')):'')+'</div>'+
+  '<div class="ac">'+(l.instagram?'<select data-seguiu="'+l.id+'"><option value=""'+(l.seguiu_verificado==null?' selected':'')+'>Segue? (a conferir)</option><option value="1"'+(l.seguiu_verificado===true?' selected':'')+'>Segue</option><option value="0"'+(l.seguiu_verificado===false?' selected':'')+'>Não segue</option></select><a class="btn sec peq" target="_blank" rel="noopener" href="https://instagram.com/'+encodeURIComponent(l.instagram)+'">Ver perfil</a>':'')+
+  (wz?'<a class="btn sec peq" target="_blank" rel="noopener" href="https://wa.me/'+wz+'?text='+encodeURIComponent(msg)+'">Abrir WhatsApp</a>':'')+
+  (l.status==='ativo'?'<button class="btn perigo peq" type="button" data-cpcancel="'+l.id+'">Cancelar cupom</button>':'')+
+  '<button class="btn perigo peq" type="button" data-cpdel="'+l.id+'">Apagar</button></div></div>';}).join('');
+ el.querySelectorAll('[data-seguiu]').forEach(function(s){s.addEventListener('change',async function(){var v=s.value===''?null:s.value==='1';var r=await sb.from('ara_leads').update({seguiu_verificado:v,atualizado_em:new Date().toISOString()}).eq('id',s.dataset.seguiu);
+  if(!r.error){var l=DB.leads.filter(function(x){return x.id===s.dataset.seguiu;})[0];if(l)l.seguiu_verificado=v;renderCampanha();}toast(r.error?'Erro ao salvar':'Anotado',!!r.error);});});
+ el.querySelectorAll('[data-cpcancel]').forEach(function(b){b.addEventListener('click',async function(){if(!confirm('Cancelar este cupom? Ele deixa de valer no site.'))return;var r=await sb.from('ara_leads').update({status:'cancelado',atualizado_em:new Date().toISOString()}).eq('id',b.dataset.cpcancel);
+  if(!r.error){var l=DB.leads.filter(function(x){return x.id===b.dataset.cpcancel;})[0];if(l)l.status='cancelado';renderCampanha();}toast(r.error?'Erro ao cancelar':'Cupom cancelado',!!r.error);});});
+ el.querySelectorAll('[data-cpdel]').forEach(function(b){b.addEventListener('click',async function(){if(!confirm('Apagar este cadastro? (use quando a pessoa pedir para sair da lista)'))return;var r=await sb.from('ara_leads').delete().eq('id',b.dataset.cpdel);
+  if(!r.error){DB.leads=DB.leads.filter(function(x){return x.id!==b.dataset.cpdel;});renderCampanha();}toast(r.error?'Erro ao apagar':'Cadastro apagado',!!r.error);});});}
+async function salvarCampanha(){var c=cpConfig();var v={ativa:$('cp-ativa').checked,base:Math.max(0,Math.min(50,Math.round(Number($('cp-base').value||0)))),instagram:Math.max(0,Math.min(50,Math.round(Number($('cp-ig').value||0)))),perfil:c.perfil};
+ var r=await sb.from('ara_config').upsert({chave:'campanha',valor:v,atualizado_em:new Date().toISOString()});toast(r.error?'Erro ao salvar':'Campanha salva',!!r.error);if(!r.error){DB.config.campanha=v;renderCampanha();}}
+function baixarLeads(){var cab=['data','nome','whatsapp','instagram','cupom','desconto_pct','status','usado_em','segue_instagram','aceita_novidades','origem'];
+ var q=function(v){v=v==null?'':String(v);return /[";\n]/.test(v)?'"'+v.replace(/"/g,'""')+'"':v;};
+ var linhas=[cab.join(';')].concat(cpFiltrados().map(function(l){return [new Date(l.criado_em).toLocaleString('pt-BR'),l.nome,l.whatsapp,l.instagram?'@'+l.instagram:'',l.cupom,l.pct,l.status,l.usado_em?new Date(l.usado_em).toLocaleDateString('pt-BR'):'',l.seguiu_verificado==null?'':(l.seguiu_verificado?'sim':'não'),l.aceita_novidades?'sim':'não',l.origem].map(q).join(';');}));
+ var blob=new Blob(['﻿'+linhas.join('\n')],{type:'text/csv;charset=utf-8'});var a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='ara-cadastros-'+new Date().toISOString().slice(0,10)+'.csv';document.body.appendChild(a);a.click();a.remove();}
+
 function fechar(id){$(id).classList.remove('on');document.body.style.overflow='';}
 
 /* ---------- ligações ---------- */
@@ -598,6 +655,11 @@ $('b-sair').addEventListener('click',sair);
 document.querySelectorAll('#abas button').forEach(function(b){b.addEventListener('click',function(){abrirAba(b.dataset.aba);});});
 document.querySelectorAll('[data-fechar]').forEach(function(b){b.addEventListener('click',function(){fechar(b.dataset.fechar);});});
 $('b-rec-ped').addEventListener('click',carregarTudo);
+$('b-cp-rec').addEventListener('click',carregarTudo);
+$('b-cp-salvar').addEventListener('click',salvarCampanha);
+$('b-cp-csv').addEventListener('click',baixarLeads);
+$('cp-busca').addEventListener('input',renderLeads);
+$('cp-filtro').addEventListener('change',renderLeads);
 $('b-novo-prod').addEventListener('click',function(){abrirProduto(null);});
 $('p-add-var').addEventListener('click',function(){linhaVar({});});
 $('p-add-det').addEventListener('click',function(){linhaDet({});});
@@ -606,7 +668,7 @@ $('p-excluir').addEventListener('click',excluirProduto);
 $('p-nome').addEventListener('input',slugPrev);$('p-slug').addEventListener('input',slugPrev);
 $('p-foto').addEventListener('change',async function(e){var f=e.target.files[0];if(!f)return;try{fotoProd=await enviarFoto(f,'produtos',$('p-nome').value);$('p-foto-prev').src=fotoProd;}catch(err){}e.target.value='';});
 $('p-foto-rm').addEventListener('click',function(){fotoProd='';$('p-foto-prev').src=fotoPadrao(slugify($('p-slug').value||$('p-nome').value));});
-pintarSEOProd=ligarSEO('p',function(){return '/#loja/'+($('p-slug').value||slugify($('p-nome').value));});
+pintarSEOProd=ligarSEO('p',function(){return '/loja/'+($('p-slug').value||slugify($('p-nome').value));});
 $('b-novo-post').addEventListener('click',function(){abrirPost(null);});
 $('b-salvar').addEventListener('click',salvarPost);
 $('b-excluir').addEventListener('click',excluirPost);
@@ -614,7 +676,7 @@ $('b-titulo').addEventListener('input',slugPrevPost);$('b-slug').addEventListene
 document.querySelectorAll('[data-cmd]').forEach(function(b){b.addEventListener('mousedown',function(e){e.preventDefault();});b.addEventListener('click',function(){cmdEditor(b.dataset.cmd);});});
 $('b-foto').addEventListener('change',async function(e){var f=e.target.files[0];if(!f)return;try{fotoPost=await enviarFoto(f,'blog',$('b-titulo').value);$('b-foto-prev').src=fotoPost;$('b-foto-prev').style.display='';}catch(err){}e.target.value='';});
 $('b-foto-rm').addEventListener('click',function(){fotoPost='';$('b-foto-prev').style.display='none';});
-pintarSEOPost=ligarSEO('b',function(){return '/#blog/'+($('b-slug').value||slugify($('b-titulo').value));});
+pintarSEOPost=ligarSEO('b',function(){return '/blog/'+($('b-slug').value||slugify($('b-titulo').value));});
 $('b-salvar-arcas').addEventListener('click',salvarArcas);
 $('b-salvar-config').addEventListener('click',salvarConfig);
 $('b-senha').addEventListener('click',trocarSenha);
