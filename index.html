@@ -262,8 +262,11 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--champ)}
   </div>
   <div class="campo" style="margin-top:14px"><label for="p-frase">Frase de destaque</label><input id="p-frase" type="text"></div>
   <div class="campo" style="margin-top:14px"><label for="p-texto">Descrição</label><textarea id="p-texto"></textarea></div>
-  <div class="bloco"><h3>Foto</h3>
+  <div class="bloco"><h3>Fotos</h3>
+    <small class="muted" style="color:var(--nevoa)">Até três fotos. A primeira é a principal; as outras mostram a peça de outros ângulos.</small>
     <div class="foto-box"><img id="p-foto-prev" alt=""><div style="display:flex;flex-direction:column;gap:8px"><label class="btn sec peq" for="p-foto">Enviar foto</label><input id="p-foto" type="file" accept="image/*" hidden><button class="btn perigo peq" type="button" id="p-foto-rm">Voltar para a foto padrão</button><small class="muted" style="color:var(--nevoa)">Quadrada, fundo claro. Reduzimos o tamanho automaticamente.</small></div></div>
+    <div class="foto-box"><img id="p-foto2-prev" alt="" style="display:none"><div style="display:flex;flex-direction:column;gap:8px"><label class="btn sec peq" for="p-foto2">Enviar foto 2</label><input id="p-foto2" type="file" accept="image/*" hidden><button class="btn perigo peq" type="button" id="p-foto2-rm" style="display:none">Remover foto 2</button></div></div>
+    <div class="foto-box"><img id="p-foto3-prev" alt="" style="display:none"><div style="display:flex;flex-direction:column;gap:8px"><label class="btn sec peq" for="p-foto3">Enviar foto 3</label><input id="p-foto3" type="file" accept="image/*" hidden><button class="btn perigo peq" type="button" id="p-foto3-rm" style="display:none">Remover foto 3</button></div></div>
   </div>
   <div class="bloco"><h3>Variações</h3>
     <div class="campo"><label for="p-rotulo">Nome da escolha</label><input id="p-rotulo" type="text" placeholder="Tamanho, Composição, Cor"></div>
@@ -330,7 +333,8 @@ var SB_URL='https://wxkwkfkidigeuupaajre.supabase.co',SB_KEY='eyJhbGciOiJIUzI1Ni
 var DEF=JSON.parse(document.getElementById('def').textContent);
 var sb=window.supabase.createClient(SB_URL,SB_KEY);
 var DB={produtos:[],posts:[],config:{},pedidos:[],privado:{},leads:[]};
-var prodAtual=null,postAtual=null,fotoProd=null,fotoPost=null,fotosArca={};
+var prodAtual=null,postAtual=null,fotoProd=null,fotoPost=null,fotosArca={},fotosExtra=['',''];
+function pintarFotosExtra(){[0,1].forEach(function(i){var n=i+2,u=fotosExtra[i];$('p-foto'+n+'-prev').src=u||'';$('p-foto'+n+'-prev').style.display=u?'':'none';$('p-foto'+n+'-rm').style.display=u?'':'none';});}
 var ARCAS_K=['essencial','plena','atelie'];
 
 function $(id){return document.getElementById(id);}
@@ -392,8 +396,8 @@ function renderPedidos(){var el=$('lista-pedidos');if(!DB.pedidos.length){el.inn
  el.querySelectorAll('[data-delped]').forEach(function(b){b.addEventListener('click',async function(){if(!confirm('Apagar este pedido?'))return;var r=await sb.from('ara_pedidos').delete().eq('id',b.dataset.delped);if(!r.error){DB.pedidos=DB.pedidos.filter(function(x){return x.id!==b.dataset.delped;});renderPedidos();}toast(r.error?'Erro ao apagar':'Pedido apagado',!!r.error);});});}
 
 /* ---------- fotos ---------- */
-function reduzirFoto(file,max){return new Promise(function(ok,falha){var fr=new FileReader();fr.onload=function(){var img=new Image();img.onload=function(){var w=img.width,h=img.height,k=Math.min(1,max/Math.max(w,h));var c=document.createElement('canvas');c.width=Math.round(w*k);c.height=Math.round(h*k);var x=c.getContext('2d');x.fillStyle='#ffffff';x.fillRect(0,0,c.width,c.height);x.drawImage(img,0,0,c.width,c.height);c.toBlob(function(b){if(b)b.lado=Math.max(w,h);b?ok(b):falha(new Error('foto'));},'image/jpeg',0.9);};img.onerror=falha;img.src=fr.result;};fr.onerror=falha;fr.readAsDataURL(file);});}
-async function enviarFoto(file,pasta,nome){toast('Enviando foto...');var blob=await reduzirFoto(file,1400);var caminho=pasta+'/'+Date.now()+'-'+(slugify(nome)||'foto')+'.jpg';
+function reduzirFoto(file,max,quadrada){return new Promise(function(ok,falha){var fr=new FileReader();fr.onload=function(){var img=new Image();img.onload=function(){var w=img.width,h=img.height,k=Math.min(1,max/Math.max(w,h));var c=document.createElement('canvas');var dw=Math.round(w*k),dh=Math.round(h*k);c.width=quadrada?Math.max(dw,dh):dw;c.height=quadrada?Math.max(dw,dh):dh;var x=c.getContext('2d');x.fillStyle='#ffffff';x.fillRect(0,0,c.width,c.height);x.drawImage(img,Math.round((c.width-dw)/2),Math.round((c.height-dh)/2),dw,dh);c.toBlob(function(b){if(b)b.lado=Math.max(w,h);b?ok(b):falha(new Error('foto'));},'image/jpeg',0.9);};img.onerror=falha;img.src=fr.result;};fr.onerror=falha;fr.readAsDataURL(file);});}
+async function enviarFoto(file,pasta,nome){toast('Enviando foto...');var blob=await reduzirFoto(file,1400,pasta==='produtos');var caminho=pasta+'/'+Date.now()+'-'+(slugify(nome)||'foto')+'.jpg';
  var r=await sb.storage.from('ara').upload(caminho,blob,{contentType:'image/jpeg',upsert:true});if(r.error){toast('Erro ao enviar a foto',true);throw r.error;}
  if(blob.lado&&blob.lado<1000){setTimeout(function(){toast('Atenção: esta foto é pequena ('+blob.lado+' px) e vai aparecer sem nitidez no site. Use uma foto com pelo menos 1000 px.',true);},400);}else{toast('Foto enviada');}
  return sb.storage.from('ara').getPublicUrl(caminho).data.publicUrl;}
@@ -438,14 +442,14 @@ function abrirProduto(p){prodAtual=p||null;p=p||{nome:'',slug:'',tag:'',frase:''
  $('p-nome').value=p.nome;$('p-slug').value=p.slug;$('p-tag').value=p.tag||'';$('p-preco').value=mostrarPreco(p.preco);$('p-frase').value=p.frase||'';$('p-texto').value=p.texto||'';
  $('p-rotulo').value=p.rotulo||'';$('p-vars').innerHTML='';(p.variantes||[]).forEach(linhaVar);$('p-dets').innerHTML='';(p.detalhes||[]).forEach(linhaDet);
  $('p-uso').value=p.uso||'';$('p-cuidados').value=p.cuidados||'';$('p-disp').checked=!!p.disponivel;$('p-ativo').checked=p.ativo!==false;$('p-semadd').checked=!!p.sem_adicional;$('p-ordem').value=p.ordem||0;$('p-cat').value=p.categoria==='cristal'?'cristal':'acessorio';
- $('p-seot').value=p.seo_titulo||'';$('p-seod').value=p.seo_descricao||'';fotoProd=p.foto_url||'';$('p-foto-prev').src=fotoProd||fotoPadrao(p.slug);
+ $('p-seot').value=p.seo_titulo||'';$('p-seod').value=p.seo_descricao||'';fotoProd=p.foto_url||'';$('p-foto-prev').src=fotoProd||fotoPadrao(p.slug);fotosExtra=[(p.fotos||[])[0]||'',(p.fotos||[])[1]||''];pintarFotosExtra();
  $('p-excluir').style.display=prodAtual?'':'none';slugPrev();pintarSEOProd();$('painel-prod').classList.add('on');document.body.style.overflow='hidden';}
 function slugPrev(){$('p-slug-prev').textContent='Link: '+siteBase()+'/loja/'+($('p-slug').value||slugify($('p-nome').value));}
 async function salvarProduto(){var nome=$('p-nome').value.trim();if(!nome){toast('Escreva o nome do produto',true);return;}
  var slug=slugify($('p-slug').value||nome);
  var vars=[].map.call($('p-vars').querySelectorAll('.row3'),function(d,i){var n=d.querySelector('.v-nome').value.trim();var o={id:d.dataset.id||slugify(n)||('v'+i),nome:n,preco:lerPreco(d.querySelector('.v-preco').value)||0};var pe=d.querySelector('.v-pedras').value.trim();if(pe)o.pedras=pe;if(d.dataset.img)o.img=d.dataset.img;if(d.dataset.estoque!=='')o.estoque=Number(d.dataset.estoque);return o;}).filter(function(v){return v.nome;});
  var dets=[].map.call($('p-dets').querySelectorAll('.row2'),function(d){return {k:d.querySelector('.d-k').value.trim(),v:d.querySelector('.d-v').value.trim()};}).filter(function(x){return x.k||x.v;});
- var row={nome:nome,slug:slug,tag:$('p-tag').value.trim(),frase:$('p-frase').value.trim(),texto:$('p-texto').value.trim(),preco:lerPreco($('p-preco').value)||(vars[0]?vars[0].preco:0),rotulo:$('p-rotulo').value.trim(),variantes:vars,detalhes:dets,uso:$('p-uso').value.trim(),cuidados:$('p-cuidados').value.trim(),foto_url:fotoProd||'',disponivel:$('p-disp').checked,ativo:$('p-ativo').checked,sem_adicional:$('p-semadd').checked,categoria:$('p-cat').value,ordem:Number($('p-ordem').value||0),seo_titulo:$('p-seot').value.trim(),seo_descricao:$('p-seod').value.trim(),atualizado_em:new Date().toISOString()};
+ var row={nome:nome,slug:slug,tag:$('p-tag').value.trim(),frase:$('p-frase').value.trim(),texto:$('p-texto').value.trim(),preco:lerPreco($('p-preco').value)||(vars[0]?vars[0].preco:0),rotulo:$('p-rotulo').value.trim(),variantes:vars,detalhes:dets,uso:$('p-uso').value.trim(),cuidados:$('p-cuidados').value.trim(),foto_url:fotoProd||'',fotos:fotosExtra.filter(Boolean),disponivel:$('p-disp').checked,ativo:$('p-ativo').checked,sem_adicional:$('p-semadd').checked,categoria:$('p-cat').value,ordem:Number($('p-ordem').value||0),seo_titulo:$('p-seot').value.trim(),seo_descricao:$('p-seod').value.trim(),atualizado_em:new Date().toISOString()};
  var r=prodAtual&&prodAtual.id?await sb.from('ara_produtos').update(row).eq('id',prodAtual.id):await sb.from('ara_produtos').insert(row);
  if(r.error){toast(r.error.code==='23505'?'Já existe um produto com esse link':'Erro ao salvar',true);return;}
  toast('Produto salvo');fechar('painel-prod');carregarTudo();}
@@ -692,6 +696,9 @@ $('p-salvar').addEventListener('click',salvarProduto);
 $('p-excluir').addEventListener('click',excluirProduto);
 $('p-nome').addEventListener('input',slugPrev);$('p-slug').addEventListener('input',slugPrev);
 $('p-foto').addEventListener('change',async function(e){var f=e.target.files[0];if(!f)return;try{fotoProd=await enviarFoto(f,'produtos',$('p-nome').value);$('p-foto-prev').src=fotoProd;}catch(err){}e.target.value='';});
+[0,1].forEach(function(i){var n=i+2;
+ $('p-foto'+n).addEventListener('change',async function(e){var f=e.target.files[0];if(!f)return;try{fotosExtra[i]=await enviarFoto(f,'produtos',$('p-nome').value+'-'+n);pintarFotosExtra();}catch(err){}e.target.value='';});
+ $('p-foto'+n+'-rm').addEventListener('click',function(){fotosExtra[i]='';pintarFotosExtra();});});
 $('p-foto-rm').addEventListener('click',function(){fotoProd='';$('p-foto-prev').src=fotoPadrao(slugify($('p-slug').value||$('p-nome').value));});
 pintarSEOProd=ligarSEO('p',function(){return '/loja/'+($('p-slug').value||slugify($('p-nome').value));});
 $('b-novo-post').addEventListener('click',function(){abrirPost(null);});
