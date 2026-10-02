@@ -95,6 +95,18 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--champ)}
 .busca-p input[type=search]{width:100%;background:var(--noite);border:1px solid rgba(233,220,192,.22);border-radius:10px;padding:11px 12px 11px 42px;font-size:16px}
 .busca-p select{flex:0 1 220px;width:auto}
 .busca-vz{color:var(--nevoa);padding:14px 4px}
+.cat-box{margin:0 0 16px}
+.cat-box>summary{cursor:pointer;font:500 20px var(--serif);color:var(--champ);list-style:none}
+.cat-box>summary::-webkit-details-marker{display:none}
+.cat-box>summary::before{content:'▸ ';color:var(--champ-2)}.cat-box[open]>summary::before{content:'▾ '}
+.cat-box>summary small{font:300 14px var(--sans);color:var(--nevoa);margin-left:6px}
+.cat-linha{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:start;padding:14px 0;border-top:1px solid var(--linha)}
+.cat-linha .mov{display:flex;flex-direction:column;gap:6px}
+.cat-linha .mov button{width:36px;height:32px;border-radius:8px;border:1px solid var(--linha);background:none;color:var(--champ);cursor:pointer}
+.cat-linha .mov button:disabled{opacity:.3;cursor:default}
+.cat-linha textarea{margin-top:8px;min-height:60px}
+.cat-linha small{display:block;margin-top:6px;color:var(--nevoa);font-size:13px}
+.cat-acoes{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
 .chk{display:flex;align-items:center;gap:10px;min-height:40px;cursor:pointer}
 .chk input{width:20px;height:20px;accent-color:#e9dcc0}
 .bloco{border-top:1px solid var(--linha);padding-top:18px;margin-top:18px;display:grid;gap:14px}
@@ -238,7 +250,12 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--champ)}
     </section>
     <section class="aba" id="aba-loja">
       <div class="cab"><div><h2>Loja</h2><p>Produtos, preços, estoque, fotos e SEO de cada peça.</p></div><button class="btn" type="button" id="b-novo-prod">+ Novo produto</button></div>
-      <div class="busca-p"><div class="lupa"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg><input type="search" id="busca-prod" placeholder="Buscar produto pelo nome" autocomplete="off" aria-label="Buscar produto pelo nome"></div><select id="filtro-cat" aria-label="Filtrar por categoria"><option value="">Todas as categorias</option><option value="cristal">Cristais</option><option value="incenso">Incensos</option><option value="acessorio">Acessórios</option></select></div>
+      <details class="card cat-box" id="cat-box"><summary>Categorias da loja<small>ordem, nomes e textos das seções</small></summary>
+        <p class="aviso" style="margin-top:12px">A loja mostra as seções nesta ordem, de cima para baixo. Use as setas para mudar a ordem. No texto de abertura, escreva [texto do link](/endereco) para criar um link.</p>
+        <div id="cat-lista"></div>
+        <div class="cat-acoes"><button class="btn sec peq" type="button" id="b-cat-nova">+ Nova categoria</button><button class="btn peq" type="button" id="b-cat-salvar">Salvar categorias</button></div>
+      </details>
+      <div class="busca-p"><div class="lupa"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg><input type="search" id="busca-prod" placeholder="Buscar produto pelo nome" autocomplete="off" aria-label="Buscar produto pelo nome"></div><select id="filtro-cat" aria-label="Filtrar por categoria"><option value="">Todas as categorias</option></select></div>
       <div class="lista" id="lista-produtos"></div><p class="busca-vz" id="busca-prod-vz" hidden>Nenhum produto com esse nome.</p>
     </section>
     <section class="aba" id="aba-arcas">
@@ -317,7 +334,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--champ)}
     <label class="chk"><input type="checkbox" id="p-disp"> Em estoque (desmarque para mostrar "Esgotado")</label>
     <label class="chk"><input type="checkbox" id="p-ativo"> Mostrar no site</label>
     <label class="chk"><input type="checkbox" id="p-semadd"> Não oferecer o adicional de cristais</label>
-    <div class="grid2"><div class="campo"><label for="p-cat">Categoria</label><select id="p-cat"><option value="cristal">Cristal (aparece primeiro na loja)</option><option value="incenso">Incenso</option><option value="acessorio">Acessório ou complemento</option></select></div><div class="campo"><label for="p-ordem">Posição na loja</label><input id="p-ordem" type="number" step="1"><small>Dentro da categoria: o menor número aparece primeiro.</small></div></div>
+    <div class="grid2"><div class="campo"><label for="p-cat">Categoria</label><select id="p-cat"></select></div><div class="campo"><label for="p-ordem">Posição na loja</label><input id="p-ordem" type="number" step="1"><small>Dentro da categoria: o menor número aparece primeiro.</small></div></div>
   </div>
   <div class="bloco"><h3>SEO (Google)</h3>
     <div class="campo"><label for="p-seot">Título no Google</label><input id="p-seot" type="text"><div class="conta" id="p-seot-c"></div></div>
@@ -411,7 +428,8 @@ async function carregarTudo(){var r=await Promise.allSettled([sb.from('ara_produ
  if(r[3].status==='fulfilled'&&!r[3].value.error)DB.pedidos=r[3].value.data||[];
  if(r[4].status==='fulfilled'&&!r[4].value.error){DB.privado={};(r[4].value.data||[]).forEach(function(x){DB.privado[x.chave]=x.valor;});}
  if(r[5]&&r[5].status==='fulfilled'&&!r[5].value.error)DB.leads=r[5].value.data||[];
- renderPedidos();renderProdutos();renderPosts();renderArcas();renderConfig();renderEstoque();renderFrete();renderPagamento();renderCampanha();carregarPainel();sinoAtualizar(SINO.chaves!=null);sinoIniciar();verificarPendentes();}
+ DB.produtos.sort(function(a,b){return (catOrdem(a)-catOrdem(b))||((a.ordem||0)-(b.ordem||0));});
+ renderCategorias();renderPedidos();renderProdutos();renderPosts();renderArcas();renderConfig();renderEstoque();renderFrete();renderPagamento();renderCampanha();carregarPainel();sinoAtualizar(SINO.chaves!=null);sinoIniciar();verificarPendentes();}
 
 /* ---------- pedidos ---------- */
 function formaPag(p){var d=p.dados||{};if(d.caminho==='whatsapp')return 'WhatsApp';if(d.metodo==='pix')return 'Pix';if(d.metodo==='cartao')return 'Cartão'+(d.parcelas>1?' '+d.parcelas+'x':'');if(d.metodo==='checkout'||p.mp_preference_id)return 'Mercado Pago';return '';}
@@ -449,7 +467,7 @@ function renderProdutos(){var el=$('lista-produtos');
   /* preço editável direto na lista, sem abrir o produto */
   var preco='<div class="pr-rap">'+(vs.length?vs.map(function(v,j){return '<label><span>'+esc(v.nome)+' R$</span><input type="text" inputmode="decimal" autocomplete="off" class="preco-in" data-pr="'+i+'" data-pv="'+j+'" value="'+mostrarPreco(v.preco)+'"></label>';}).join('')
    :'<label><span>Preço R$</span><input type="text" inputmode="decimal" autocomplete="off" class="preco-in" data-pr="'+i+'" value="'+mostrarPreco(p.preco)+'"></label>')+'<button class="btn peq" type="button" data-prs="'+i+'" hidden>Salvar preço</button></div>';
-  return '<div class="card linha-p" data-busca="'+esc(normBusca(p.nome+' '+p.slug))+'" data-cat="'+esc(p.categoria||'acessorio')+'"><img src="'+esc(p.foto_url||fotoPadrao(p.slug))+'" alt=""><div><div class="t">'+esc(p.nome)+'</div>'+preco+'<div style="margin-top:6px"><span class="pill '+(p.disponivel?'ok':'no')+'">'+(p.disponivel?'Em estoque':'Esgotado')+'</span><span class="pill">'+(p.ativo?'No site':'Oculto')+'</span>'+'<span class="pill">'+({cristal:'Cristal',incenso:'Incenso'}[p.categoria]||'Acessório')+'</span>'+'</div></div><button class="btn sec peq" type="button" data-editp="'+i+'">Editar</button></div>';}).join('');
+  return '<div class="card linha-p" data-busca="'+esc(normBusca(p.nome+' '+p.slug))+'" data-cat="'+esc(p.categoria||'acessorio')+'"><img src="'+esc(p.foto_url||fotoPadrao(p.slug))+'" alt=""><div><div class="t">'+esc(p.nome)+'</div>'+preco+'<div style="margin-top:6px"><span class="pill '+(p.disponivel?'ok':'no')+'">'+(p.disponivel?'Em estoque':'Esgotado')+'</span><span class="pill">'+(p.ativo?'No site':'Oculto')+'</span>'+'<span class="pill">'+esc((catDe(p.categoria)||{nome:'Sem categoria'}).nome)+'</span>'+'</div></div><button class="btn sec peq" type="button" data-editp="'+i+'">Editar</button></div>';}).join('');
  el.querySelectorAll('[data-editp]').forEach(function(b){b.addEventListener('click',function(){abrirProduto(DB.produtos[Number(b.dataset.editp)]);});});
  el.querySelectorAll('[data-pr]').forEach(function(inp){inp.addEventListener('input',function(){el.querySelector('[data-prs="'+inp.dataset.pr+'"]').hidden=false;});
   inp.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();inp.blur();salvarPrecoRapido(Number(inp.dataset.pr));}});});
@@ -457,7 +475,36 @@ function renderProdutos(){var el=$('lista-produtos');
  filtrarProdutos();}
 /* busca rápida: filtra a lista pelo nome (sem acento) e pela categoria, sem precisar rolar */
 function normBusca(t){return String(t||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();}
-function catOrdem(p){return p&&p.categoria==='cristal'?0:(p&&p.categoria==='incenso'?1:2);}
+/* ---------- categorias da loja (ara_config 'categorias'): ordem, nome e texto de abertura de cada seção ---------- */
+var CATS_PADRAO=[{id:'cristal',nome:'Cristais',intro:'Os cristais se formam ao longo de milhões de anos e acompanham a humanidade desde os sumérios. [Conheça essa história](/historia#linha-do-tempo), que também dá nome às peças da ARA.'},{id:'acessorio',nome:'Acessórios e complementos',intro:''},{id:'incenso',nome:'Incensos',intro:'Incensos indianos para perfumar a casa e marcar o início da meditação. Cada aroma é um produto: escolha os seus e adicione ao carrinho.'}];
+function cats(){var c=DB.config&&DB.config.categorias;return Array.isArray(c)&&c.length?c:CATS_PADRAO;}
+function catDe(id){return cats().filter(function(c){return c.id===id;})[0]||null;}
+function catOrdem(p){var cs=cats();for(var i=0;i<cs.length;i++){if(cs[i].id===(p&&p.categoria))return i;}return cs.length;}
+function preencherSelectsCat(){var cs=cats();
+ var pc=$('p-cat'),v=pc.value;pc.innerHTML=cs.map(function(c){return '<option value="'+esc(c.id)+'">'+esc(c.nome)+'</option>';}).join('');if(v&&catDe(v))pc.value=v;
+ var fc=$('filtro-cat'),f=fc.value;fc.innerHTML='<option value="">Todas as categorias</option>'+cs.map(function(c){return '<option value="'+esc(c.id)+'">'+esc(c.nome)+'</option>';}).join('');fc.value=catDe(f)?f:'';}
+var CAT_EDIT=[];
+function renderCategorias(){CAT_EDIT=JSON.parse(JSON.stringify(cats()));pintarCats();preencherSelectsCat();}
+function pintarCats(){var el=$('cat-lista');
+ el.innerHTML=CAT_EDIT.map(function(c,i){var n=DB.produtos.filter(function(p){return p.categoria===c.id;}).length;
+  return '<div class="cat-linha"><div class="mov"><button type="button" data-cup="'+i+'" aria-label="Subir"'+(i===0?' disabled':'')+'>↑</button><button type="button" data-cdown="'+i+'" aria-label="Descer"'+(i===CAT_EDIT.length-1?' disabled':'')+'>↓</button></div>'+
+  '<div><input type="text" data-cn="'+i+'" value="'+esc(c.nome)+'" placeholder="Nome da seção (ex.: Velas)" aria-label="Nome da categoria"><textarea data-ci="'+i+'" placeholder="Texto de abertura da seção (opcional)" aria-label="Texto de abertura">'+esc(c.intro||'')+'</textarea>'+
+  '<small>'+(c.id?'Código: '+esc(c.id)+' · ':'Nova · ')+n+(n===1?' produto':' produtos')+'</small></div>'+
+  '<button class="btn perigo peq" type="button" data-cdel="'+i+'"'+(n?' disabled title="Mude os produtos desta categoria antes de remover"':'')+'>Remover</button></div>';}).join('');
+ el.querySelectorAll('[data-cn]').forEach(function(x){x.addEventListener('input',function(){CAT_EDIT[Number(x.dataset.cn)].nome=x.value;});});
+ el.querySelectorAll('[data-ci]').forEach(function(x){x.addEventListener('input',function(){CAT_EDIT[Number(x.dataset.ci)].intro=x.value;});});
+ el.querySelectorAll('[data-cup]').forEach(function(b){b.addEventListener('click',function(){var i=Number(b.dataset.cup);CAT_EDIT.splice(i-1,0,CAT_EDIT.splice(i,1)[0]);pintarCats();});});
+ el.querySelectorAll('[data-cdown]').forEach(function(b){b.addEventListener('click',function(){var i=Number(b.dataset.cdown);CAT_EDIT.splice(i+1,0,CAT_EDIT.splice(i,1)[0]);pintarCats();});});
+ el.querySelectorAll('[data-cdel]').forEach(function(b){b.addEventListener('click',function(){var i=Number(b.dataset.cdel);if(!confirm('Remover a categoria "'+(CAT_EDIT[i].nome||'nova')+'"?'))return;CAT_EDIT.splice(i,1);pintarCats();});});}
+async function salvarCategorias(){var usados={},lista=[];
+ for(var i=0;i<CAT_EDIT.length;i++){var c=CAT_EDIT[i],nome=String(c.nome||'').trim();if(!nome){toast('Dê um nome para cada categoria',true);return;}
+  var id=c.id||slugify(nome).slice(0,40)||'categoria';var base=id,k=2;while(usados[id]){id=base+'-'+k++;}usados[id]=1;
+  lista.push({id:id,nome:nome,intro:String(c.intro||'').trim()});}
+ if(!lista.length){toast('A loja precisa de pelo menos uma categoria',true);return;}
+ var r=await sb.from('ara_config').upsert({chave:'categorias',valor:lista,atualizado_em:new Date().toISOString()});
+ if(r.error){toast('Erro ao salvar as categorias',true);return;}
+ DB.config.categorias=lista;DB.produtos.sort(function(a,b){return (catOrdem(a)-catOrdem(b))||((a.ordem||0)-(b.ordem||0));});
+ renderCategorias();renderProdutos();renderEstoque();toast('Categorias salvas. O site já mostra a nova ordem.');}
 function filtrarProdutos(){var q=normBusca($('busca-prod').value).trim().split(/\s+/).filter(Boolean),c=$('filtro-cat').value,n=0;
  document.querySelectorAll('#lista-produtos [data-busca]').forEach(function(el){var ok=(!c||el.dataset.cat===c)&&q.every(function(w){return el.dataset.busca.indexOf(w)>=0;});el.hidden=!ok;if(ok)n++;});
  $('busca-prod-vz').hidden=!!n||!DB.produtos.length;}
@@ -483,7 +530,7 @@ function abrirProduto(p){prodAtual=p||null;p=p||{nome:'',slug:'',tag:'',frase:''
  $('pp-t').textContent=prodAtual?'Editar produto':'Novo produto';
  $('p-nome').value=p.nome;$('p-slug').value=p.slug;$('p-tag').value=p.tag||'';$('p-preco').value=mostrarPreco(p.preco);$('p-frase').value=p.frase||'';$('p-texto').value=p.texto||'';
  $('p-rotulo').value=p.rotulo||'';$('p-vars').innerHTML='';(p.variantes||[]).forEach(linhaVar);$('p-dets').innerHTML='';(p.detalhes||[]).forEach(linhaDet);
- $('p-uso').value=p.uso||'';$('p-cuidados').value=p.cuidados||'';$('p-disp').checked=!!p.disponivel;$('p-ativo').checked=p.ativo!==false;$('p-semadd').checked=!!p.sem_adicional;$('p-ordem').value=p.ordem||0;$('p-cat').value=['cristal','incenso'].indexOf(p.categoria)>=0?p.categoria:'acessorio';
+ $('p-uso').value=p.uso||'';$('p-cuidados').value=p.cuidados||'';$('p-disp').checked=!!p.disponivel;$('p-ativo').checked=p.ativo!==false;$('p-semadd').checked=!!p.sem_adicional;$('p-ordem').value=p.ordem||0;preencherSelectsCat();$('p-cat').value=catDe(p.categoria)?p.categoria:(catDe('acessorio')?'acessorio':cats()[0].id);
  $('p-seot').value=p.seo_titulo||'';$('p-seod').value=p.seo_descricao||'';fotoProd=p.foto_url||'';$('p-foto-prev').src=fotoProd||fotoPadrao(p.slug);fotosExtra=[(p.fotos||[])[0]||'',(p.fotos||[])[1]||''];pintarFotosExtra();
  $('p-excluir').style.display=prodAtual?'':'none';slugPrev();pintarSEOProd();$('painel-prod').classList.add('on');document.body.style.overflow='hidden';}
 function slugPrev(){$('p-slug-prev').textContent='Link: '+siteBase()+'/loja/'+($('p-slug').value||slugify($('p-nome').value));}
@@ -823,6 +870,7 @@ $('b-salvar-frete').addEventListener('click',salvarFrete);
 $('b-add-regiao').addEventListener('click',function(){linhaRegiao({});});
 $('fr-teste').addEventListener('input',testarCep);
 $('b-salvar-mp').addEventListener('click',salvarPagamento);
+$('b-cat-nova').addEventListener('click',function(){CAT_EDIT.push({id:'',nome:'',intro:''});pintarCats();var x=document.querySelector('[data-cn="'+(CAT_EDIT.length-1)+'"]');if(x)x.focus();});$('b-cat-salvar').addEventListener('click',salvarCategorias);preencherSelectsCat();
 $('busca-prod').addEventListener('input',filtrarProdutos);$('filtro-cat').addEventListener('change',filtrarProdutos);$('busca-est').addEventListener('input',filtrarEstoque);
 $('b-mp-testar').addEventListener('click',testarMP);
 sb.auth.onAuthStateChange(function(ev){if(ev==='PASSWORD_RECOVERY'){$('tela-login').style.display='none';$('app').style.display='block';abrirAba('config');toast('Defina a sua nova senha abaixo');}});
