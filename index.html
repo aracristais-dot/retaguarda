@@ -18,6 +18,7 @@ body{margin:0;background:var(--noite);color:var(--txt);font:300 16px/1.6 var(--s
 a{color:var(--champ)}
 h1,h2,h3{font-family:var(--serif);font-weight:500;color:var(--champ);margin:0}
 button,input,select,textarea{font:inherit;color:inherit}
+[hidden]{display:none!important}
 :focus-visible{outline:2px solid var(--champ);outline-offset:2px}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:0 20px;border-radius:999px;border:1px solid transparent;cursor:pointer;text-decoration:none;font-size:15px;letter-spacing:.03em;background:var(--champ);color:var(--noite);font-weight:400}
 .btn:hover{background:#fff6e2}
@@ -88,6 +89,12 @@ main{max-width:1200px;margin:0 auto;padding:26px 18px 90px}
 input[type=text],input[type=email],input[type=password],input[type=number],input[type=date],input[type=tel],select,textarea{width:100%;background:var(--noite);border:1px solid rgba(233,220,192,.22);border-radius:10px;padding:11px 12px;font-size:16px}
 textarea{min-height:90px;resize:vertical}
 input:focus,select:focus,textarea:focus{outline:none;border-color:var(--champ)}
+.busca-p{display:flex;gap:10px;flex-wrap:wrap;margin:0 0 16px}
+.busca-p .lupa{position:relative;flex:1 1 260px}
+.busca-p .lupa svg{position:absolute;left:14px;top:50%;transform:translateY(-50%);width:18px;height:18px;color:var(--nevoa);pointer-events:none}
+.busca-p input[type=search]{width:100%;background:var(--noite);border:1px solid rgba(233,220,192,.22);border-radius:10px;padding:11px 12px 11px 42px;font-size:16px}
+.busca-p select{flex:0 1 220px;width:auto}
+.busca-vz{color:var(--nevoa);padding:14px 4px}
 .chk{display:flex;align-items:center;gap:10px;min-height:40px;cursor:pointer}
 .chk input{width:20px;height:20px;accent-color:#e9dcc0}
 .bloco{border-top:1px solid var(--linha);padding-top:18px;margin-top:18px;display:grid;gap:14px}
@@ -224,13 +231,15 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--champ)}
     <section class="aba" id="aba-estoque">
       <div class="cab"><div><h2>Estoque e preços</h2><p>Edite direto na lista: custo, preço de venda e quantidade. A margem é calculada na hora.</p></div>
         <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><label style="font-size:14px;color:var(--nevoa)">Taxa Mercado Pago (%) <input type="number" step="0.01" id="e-taxa" style="width:90px;display:inline-block;margin-left:6px"></label><button class="btn" type="button" id="b-salvar-estoque">Salvar alterações</button></div></div>
+      <div class="busca-p"><div class="lupa"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg><input type="search" id="busca-est" placeholder="Buscar produto pelo nome" autocomplete="off" aria-label="Buscar produto no estoque"></div></div>
       <div class="tabela-wrap"><table class="tab" id="tab-estoque"><thead><tr><th>Produto</th><th>Custo (R$)</th><th>Venda (R$)</th><th>Estoque</th><th>Lucro/un</th><th>Margem</th><th>À venda</th></tr></thead><tbody></tbody></table></div>
       <div class="resumo-est" id="resumo-est"></div>
       <p class="aviso" style="margin-top:14px">Custo = valor pago ao fornecedor com IPI. Lucro e margem já descontam a taxa do Mercado Pago informada acima. Nas Arcas e na Bandeja, some ao custo o valor dos cristais. Estoque vazio = não controlar quantidade. O estoque baixa sozinho quando um pagamento é aprovado.</p>
     </section>
     <section class="aba" id="aba-loja">
       <div class="cab"><div><h2>Loja</h2><p>Produtos, preços, estoque, fotos e SEO de cada peça.</p></div><button class="btn" type="button" id="b-novo-prod">+ Novo produto</button></div>
-      <div class="lista" id="lista-produtos"></div>
+      <div class="busca-p"><div class="lupa"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg><input type="search" id="busca-prod" placeholder="Buscar produto pelo nome" autocomplete="off" aria-label="Buscar produto pelo nome"></div><select id="filtro-cat" aria-label="Filtrar por categoria"><option value="">Todas as categorias</option><option value="cristal">Cristais</option><option value="incenso">Incensos</option><option value="acessorio">Acessórios</option></select></div>
+      <div class="lista" id="lista-produtos"></div><p class="busca-vz" id="busca-prod-vz" hidden>Nenhum produto com esse nome.</p>
     </section>
     <section class="aba" id="aba-arcas">
       <div class="cab"><div><h2>Arcas</h2><p>Preços, medidas, prazos e fotos das três Arcas.</p></div></div>
@@ -308,7 +317,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--champ)}
     <label class="chk"><input type="checkbox" id="p-disp"> Em estoque (desmarque para mostrar "Esgotado")</label>
     <label class="chk"><input type="checkbox" id="p-ativo"> Mostrar no site</label>
     <label class="chk"><input type="checkbox" id="p-semadd"> Não oferecer o adicional de cristais</label>
-    <div class="grid2"><div class="campo"><label for="p-cat">Categoria</label><select id="p-cat"><option value="cristal">Cristal (aparece primeiro na loja)</option><option value="acessorio">Acessório ou complemento</option></select></div><div class="campo"><label for="p-ordem">Posição na loja</label><input id="p-ordem" type="number" step="1"><small>Dentro da categoria: o menor número aparece primeiro.</small></div></div>
+    <div class="grid2"><div class="campo"><label for="p-cat">Categoria</label><select id="p-cat"><option value="cristal">Cristal (aparece primeiro na loja)</option><option value="incenso">Incenso</option><option value="acessorio">Acessório ou complemento</option></select></div><div class="campo"><label for="p-ordem">Posição na loja</label><input id="p-ordem" type="number" step="1"><small>Dentro da categoria: o menor número aparece primeiro.</small></div></div>
   </div>
   <div class="bloco"><h3>SEO (Google)</h3>
     <div class="campo"><label for="p-seot">Título no Google</label><input id="p-seot" type="text"><div class="conta" id="p-seot-c"></div></div>
@@ -396,7 +405,7 @@ function abrirAba(a){document.querySelectorAll('#abas button').forEach(function(
 
 /* ---------- carregar ---------- */
 async function carregarTudo(){var r=await Promise.allSettled([sb.from('ara_produtos').select('*').order('ordem'),sb.from('ara_posts').select('*').order('ordem'),sb.from('ara_config').select('*'),sb.from('ara_pedidos').select('*').order('criado_em',{ascending:false}).limit(300),sb.from('ara_privado').select('*'),sb.from('ara_leads').select('*').order('criado_em',{ascending:false}).limit(5000)]);
- if(r[0].status==='fulfilled'&&!r[0].value.error)DB.produtos=(r[0].value.data||[]).sort(function(a,b){return ((b.categoria==='cristal')-(a.categoria==='cristal'))||((a.ordem||0)-(b.ordem||0));});
+ if(r[0].status==='fulfilled'&&!r[0].value.error)DB.produtos=(r[0].value.data||[]).sort(function(a,b){return (catOrdem(a)-catOrdem(b))||((a.ordem||0)-(b.ordem||0));});
  if(r[1].status==='fulfilled'&&!r[1].value.error)DB.posts=r[1].value.data||[];
  if(r[2].status==='fulfilled'&&!r[2].value.error){DB.config={};(r[2].value.data||[]).forEach(function(x){DB.config[x.chave]=x.valor;});}
  if(r[3].status==='fulfilled'&&!r[3].value.error)DB.pedidos=r[3].value.data||[];
@@ -440,11 +449,21 @@ function renderProdutos(){var el=$('lista-produtos');
   /* preço editável direto na lista, sem abrir o produto */
   var preco='<div class="pr-rap">'+(vs.length?vs.map(function(v,j){return '<label><span>'+esc(v.nome)+' R$</span><input type="text" inputmode="decimal" autocomplete="off" class="preco-in" data-pr="'+i+'" data-pv="'+j+'" value="'+mostrarPreco(v.preco)+'"></label>';}).join('')
    :'<label><span>Preço R$</span><input type="text" inputmode="decimal" autocomplete="off" class="preco-in" data-pr="'+i+'" value="'+mostrarPreco(p.preco)+'"></label>')+'<button class="btn peq" type="button" data-prs="'+i+'" hidden>Salvar preço</button></div>';
-  return '<div class="card linha-p"><img src="'+esc(p.foto_url||fotoPadrao(p.slug))+'" alt=""><div><div class="t">'+esc(p.nome)+'</div>'+preco+'<div style="margin-top:6px"><span class="pill '+(p.disponivel?'ok':'no')+'">'+(p.disponivel?'Em estoque':'Esgotado')+'</span><span class="pill">'+(p.ativo?'No site':'Oculto')+'</span>'+(p.categoria==='cristal'?'<span class="pill">Cristal</span>':'')+'</div></div><button class="btn sec peq" type="button" data-editp="'+i+'">Editar</button></div>';}).join('');
+  return '<div class="card linha-p" data-busca="'+esc(normBusca(p.nome+' '+p.slug))+'" data-cat="'+esc(p.categoria||'acessorio')+'"><img src="'+esc(p.foto_url||fotoPadrao(p.slug))+'" alt=""><div><div class="t">'+esc(p.nome)+'</div>'+preco+'<div style="margin-top:6px"><span class="pill '+(p.disponivel?'ok':'no')+'">'+(p.disponivel?'Em estoque':'Esgotado')+'</span><span class="pill">'+(p.ativo?'No site':'Oculto')+'</span>'+'<span class="pill">'+({cristal:'Cristal',incenso:'Incenso'}[p.categoria]||'Acessório')+'</span>'+'</div></div><button class="btn sec peq" type="button" data-editp="'+i+'">Editar</button></div>';}).join('');
  el.querySelectorAll('[data-editp]').forEach(function(b){b.addEventListener('click',function(){abrirProduto(DB.produtos[Number(b.dataset.editp)]);});});
  el.querySelectorAll('[data-pr]').forEach(function(inp){inp.addEventListener('input',function(){el.querySelector('[data-prs="'+inp.dataset.pr+'"]').hidden=false;});
   inp.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();inp.blur();salvarPrecoRapido(Number(inp.dataset.pr));}});});
- el.querySelectorAll('[data-prs]').forEach(function(b){b.addEventListener('click',function(){salvarPrecoRapido(Number(b.dataset.prs));});});}
+ el.querySelectorAll('[data-prs]').forEach(function(b){b.addEventListener('click',function(){salvarPrecoRapido(Number(b.dataset.prs));});});
+ filtrarProdutos();}
+/* busca rápida: filtra a lista pelo nome (sem acento) e pela categoria, sem precisar rolar */
+function normBusca(t){return String(t||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();}
+function catOrdem(p){return p&&p.categoria==='cristal'?0:(p&&p.categoria==='incenso'?1:2);}
+function filtrarProdutos(){var q=normBusca($('busca-prod').value).trim().split(/\s+/).filter(Boolean),c=$('filtro-cat').value,n=0;
+ document.querySelectorAll('#lista-produtos [data-busca]').forEach(function(el){var ok=(!c||el.dataset.cat===c)&&q.every(function(w){return el.dataset.busca.indexOf(w)>=0;});el.hidden=!ok;if(ok)n++;});
+ $('busca-prod-vz').hidden=!!n||!DB.produtos.length;}
+function filtrarEstoque(){var q=normBusca($('busca-est').value).trim().split(/\s+/).filter(Boolean);
+ document.querySelectorAll('#tab-estoque tbody tr[data-i]').forEach(function(tr){var t=normBusca(tr.querySelector('.nome').textContent);tr.hidden=!q.every(function(w){return t.indexOf(w)>=0;});});
+ document.querySelectorAll('#tab-estoque tbody tr.grupo').forEach(function(tr){tr.hidden=q.length>0;});}
 async function salvarPrecoRapido(i){var p=DB.produtos[i];if(!p)return;var el=$('lista-produtos');var vs=JSON.parse(JSON.stringify(p.variantes||[]));var preco=p.preco,ok=true;
  el.querySelectorAll('[data-pr="'+i+'"]').forEach(function(inp){var n=lerPreco(inp.value);if(n==null||n<=0){ok=false;return;}if(inp.dataset.pv!=null&&inp.dataset.pv!==''){vs[Number(inp.dataset.pv)].preco=n;}else{preco=n;}});
  if(!ok){toast('Escreva um preço válido',true);return;}
@@ -464,7 +483,7 @@ function abrirProduto(p){prodAtual=p||null;p=p||{nome:'',slug:'',tag:'',frase:''
  $('pp-t').textContent=prodAtual?'Editar produto':'Novo produto';
  $('p-nome').value=p.nome;$('p-slug').value=p.slug;$('p-tag').value=p.tag||'';$('p-preco').value=mostrarPreco(p.preco);$('p-frase').value=p.frase||'';$('p-texto').value=p.texto||'';
  $('p-rotulo').value=p.rotulo||'';$('p-vars').innerHTML='';(p.variantes||[]).forEach(linhaVar);$('p-dets').innerHTML='';(p.detalhes||[]).forEach(linhaDet);
- $('p-uso').value=p.uso||'';$('p-cuidados').value=p.cuidados||'';$('p-disp').checked=!!p.disponivel;$('p-ativo').checked=p.ativo!==false;$('p-semadd').checked=!!p.sem_adicional;$('p-ordem').value=p.ordem||0;$('p-cat').value=p.categoria==='cristal'?'cristal':'acessorio';
+ $('p-uso').value=p.uso||'';$('p-cuidados').value=p.cuidados||'';$('p-disp').checked=!!p.disponivel;$('p-ativo').checked=p.ativo!==false;$('p-semadd').checked=!!p.sem_adicional;$('p-ordem').value=p.ordem||0;$('p-cat').value=['cristal','incenso'].indexOf(p.categoria)>=0?p.categoria:'acessorio';
  $('p-seot').value=p.seo_titulo||'';$('p-seod').value=p.seo_descricao||'';fotoProd=p.foto_url||'';$('p-foto-prev').src=fotoProd||fotoPadrao(p.slug);fotosExtra=[(p.fotos||[])[0]||'',(p.fotos||[])[1]||''];pintarFotosExtra();
  $('p-excluir').style.display=prodAtual?'':'none';slugPrev();pintarSEOProd();$('painel-prod').classList.add('on');document.body.style.overflow='hidden';}
 function slugPrev(){$('p-slug-prev').textContent='Link: '+siteBase()+'/loja/'+($('p-slug').value||slugify($('p-nome').value));}
@@ -567,7 +586,7 @@ function renderEstoque(){var tb=document.querySelector('#tab-estoque tbody');EST
  ARCAS_K.forEach(function(k){var m=a[k]||{};EST_LINHAS.push({tipo:'arca',k:k});html+=linhaEst(EST_LINHAS.length-1,m.nome||k,'',ca[k],m.preco,m.estoque,m.disponivel!==false,true);});
  tb.innerHTML=html;
  tb.querySelectorAll('input').forEach(function(inp){inp.addEventListener('input',function(){inp.closest('tr').classList.add('mudou');calcLinha(inp.closest('tr'));resumoEst();});});
- tb.querySelectorAll('tr[data-i]').forEach(calcLinha);resumoEst();}
+ tb.querySelectorAll('tr[data-i]').forEach(calcLinha);resumoEst();filtrarEstoque();}
 function linhaEst(i,nome,sub,custo,preco,est,disp,mostrarDisp){
  return '<tr data-i="'+i+'"><td class="nome">'+esc(nome)+(sub?'<small>'+esc(sub)+'</small>':'')+'</td>'+
  '<td><input type="text" inputmode="decimal" autocomplete="off" class="e-custo preco-in" value="'+esc(mostrarPreco(custo))+'"></td>'+
@@ -804,6 +823,7 @@ $('b-salvar-frete').addEventListener('click',salvarFrete);
 $('b-add-regiao').addEventListener('click',function(){linhaRegiao({});});
 $('fr-teste').addEventListener('input',testarCep);
 $('b-salvar-mp').addEventListener('click',salvarPagamento);
+$('busca-prod').addEventListener('input',filtrarProdutos);$('filtro-cat').addEventListener('change',filtrarProdutos);$('busca-est').addEventListener('input',filtrarEstoque);
 $('b-mp-testar').addEventListener('click',testarMP);
 sb.auth.onAuthStateChange(function(ev){if(ev==='PASSWORD_RECOVERY'){$('tela-login').style.display='none';$('app').style.display='block';abrirAba('config');toast('Defina a sua nova senha abaixo');}});
 verificarAdmin();
