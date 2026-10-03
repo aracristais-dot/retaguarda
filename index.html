@@ -153,6 +153,10 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--champ)}
 .tab td.nome{min-width:190px}.tab td.nome small{display:block;color:var(--nevoa);font-size:12px}
 .tab .mg{font-weight:500;white-space:nowrap}.mg.bom{color:var(--ok)}.mg.medio{color:#e9d49c}.mg.ruim{color:var(--erro)}
 .tab tr.mudou td{background:rgba(233,220,192,.05)}
+.tab tr.salvando td{opacity:.6}
+.tab tr.salvo td{background:rgba(159,211,168,.12);transition:background .6s}
+.tab tr.erro-salvar td{background:rgba(240,182,168,.16)}
+.est-status{font-size:14px;color:var(--ok)}
 .resumo-est{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-top:16px}
 .resumo-est div{background:var(--noite-2);border:1px solid var(--linha);border-radius:12px;padding:14px}
 .resumo-est b{display:block;font:500 24px var(--serif);color:var(--champ)}.resumo-est span{font-size:13px;color:var(--nevoa)}
@@ -245,7 +249,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--champ)}
     </section>
     <section class="aba" id="aba-estoque">
       <div class="cab"><div><h2>Estoque e preços</h2><p>Edite direto na lista: custo, preço de venda e quantidade. A margem é calculada na hora.</p></div>
-        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><label style="font-size:14px;color:var(--nevoa)">Taxa Mercado Pago (%) <input type="number" step="0.01" id="e-taxa" style="width:90px;display:inline-block;margin-left:6px"></label><button class="btn" type="button" id="b-salvar-estoque">Salvar alterações</button></div></div>
+        <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap"><label style="font-size:14px;color:var(--nevoa)">Taxa Mercado Pago (%) <input type="number" step="0.01" id="e-taxa" style="width:90px;display:inline-block;margin-left:6px"></label><span class="est-status" id="est-status" role="status">Tudo o que você muda aqui é salvo sozinho.</span><button class="btn" type="button" id="b-salvar-estoque">Salvar tudo</button></div></div>
       <div class="busca-p"><div class="lupa"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg><input type="search" id="busca-est" placeholder="Buscar produto pelo nome" autocomplete="off" aria-label="Buscar produto no estoque"></div></div>
       <div class="tabela-wrap"><table class="tab" id="tab-estoque"><thead><tr><th>Produto</th><th>Custo (R$)</th><th>Venda (R$)</th><th>Estoque</th><th>Lucro/un</th><th>Margem</th><th>À venda</th></tr></thead><tbody></tbody></table></div>
       <div class="resumo-est" id="resumo-est"></div>
@@ -474,7 +478,8 @@ function renderProdutos(){var el=$('lista-produtos');
   return (p.ativo===false&&(i===0||DB.produtos[i-1].ativo!==false)?'<div class="fora-cab" data-busca="" data-cat="">Fora do site (não aparecem na loja)</div>':'')+'<div class="card linha-p'+(p.ativo===false?' fora-site':'')+'" data-busca="'+esc(normBusca(p.nome+' '+p.slug))+'" data-cat="'+esc(p.categoria||'acessorio')+'"><img src="'+esc(p.foto_url||fotoPadrao(p.slug))+'" alt=""><div><div class="t">'+esc(p.nome)+'</div>'+preco+'<div style="margin-top:6px"><span class="pill '+(p.disponivel?'ok':'no')+'">'+(p.disponivel?'Em estoque':'Esgotado')+'</span><span class="pill">'+(p.ativo?'No site':'Fora do site')+'</span>'+'<span class="pill">'+esc((catDe(p.categoria)||{nome:'Sem categoria'}).nome)+'</span>'+'</div></div><button class="btn sec peq" type="button" data-editp="'+i+'">Editar</button></div>';}).join('');
  el.querySelectorAll('[data-editp]').forEach(function(b){b.addEventListener('click',function(){abrirProduto(DB.produtos[Number(b.dataset.editp)]);});});
  el.querySelectorAll('[data-pr]').forEach(function(inp){inp.addEventListener('input',function(){el.querySelector('[data-prs="'+inp.dataset.pr+'"]').hidden=false;});
-  inp.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();inp.blur();salvarPrecoRapido(Number(inp.dataset.pr));}});});
+  inp.addEventListener('change',function(){salvarPrecoRapido(Number(inp.dataset.pr));});
+  inp.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();inp.blur();}});});
  el.querySelectorAll('[data-prs]').forEach(function(b){b.addEventListener('click',function(){salvarPrecoRapido(Number(b.dataset.prs));});});
  filtrarProdutos();}
 /* busca rápida: filtra a lista pelo nome (sem acento) e pela categoria, sem precisar rolar */
@@ -522,8 +527,8 @@ async function salvarPrecoRapido(i){var p=DB.produtos[i];if(!p)return;var el=$('
  if(!ok){toast('Escreva um preço válido',true);return;}
  if(vs.length)preco=Math.min.apply(null,vs.map(function(v){return Number(v.preco);}));
  var upd={preco:preco,atualizado_em:new Date().toISOString()};if(vs.length)upd.variantes=vs;
- var r=await sb.from('ara_produtos').update(upd).eq('id',p.id);toast(r.error?'Erro ao salvar o preço':'Preço salvo: '+p.nome,!!r.error);
- if(!r.error){p.preco=preco;if(vs.length)p.variantes=vs;renderProdutos();renderEstoque();}}
+ var r=await sb.from('ara_produtos').update(upd).eq('id',p.id).select('id');var ok2=!r.error&&r.data&&r.data.length;toast(ok2?'Preço salvo: '+p.nome:'Não foi possível salvar o preço. Entre de novo no painel.',!ok2);
+ if(ok2){p.preco=preco;if(vs.length)p.variantes=vs;renderProdutos();renderEstoque();}}
 async function importarProdutos(){var rows=DEF.produtos.map(function(p){var c=JSON.parse(JSON.stringify(p));delete c.id;return c;});
  var r=await sb.from('ara_produtos').upsert(rows,{onConflict:'slug'});toast(r.error?'Erro ao importar':'Produtos importados',!!r.error);carregarTudo();}
 function linhaVar(v){var d=document.createElement('div');d.className='row3';d.innerHTML='<input type="text" placeholder="Nome (ex.: Mini)" class="v-nome"><input type="text" inputmode="decimal" autocomplete="off" placeholder="Preço" class="v-preco preco-in"><input type="text" placeholder="Acompanha (opcional)" class="v-pedras pedras"><button class="x" type="button" aria-label="Remover">×</button>';
@@ -545,8 +550,9 @@ async function salvarProduto(){var nome=$('p-nome').value.trim();if(!nome){toast
  var vars=[].map.call($('p-vars').querySelectorAll('.row3'),function(d,i){var n=d.querySelector('.v-nome').value.trim();var o={id:d.dataset.id||slugify(n)||('v'+i),nome:n,preco:lerPreco(d.querySelector('.v-preco').value)||0};var pe=d.querySelector('.v-pedras').value.trim();if(pe)o.pedras=pe;if(d.dataset.img)o.img=d.dataset.img;if(d.dataset.estoque!=='')o.estoque=Number(d.dataset.estoque);return o;}).filter(function(v){return v.nome;});
  var dets=[].map.call($('p-dets').querySelectorAll('.row2'),function(d){return {k:d.querySelector('.d-k').value.trim(),v:d.querySelector('.d-v').value.trim()};}).filter(function(x){return x.k||x.v;});
  var row={nome:nome,slug:slug,tag:$('p-tag').value.trim(),frase:$('p-frase').value.trim(),texto:$('p-texto').value.trim(),preco:lerPreco($('p-preco').value)||(vars[0]?vars[0].preco:0),rotulo:$('p-rotulo').value.trim(),variantes:vars,detalhes:dets,uso:$('p-uso').value.trim(),cuidados:$('p-cuidados').value.trim(),foto_url:fotoProd||'',fotos:fotosExtra.filter(Boolean),disponivel:$('p-disp').checked,ativo:$('p-ativo').checked,sem_adicional:$('p-semadd').checked,categoria:$('p-cat').value,ordem:Number($('p-ordem').value||0),seo_titulo:$('p-seot').value.trim(),seo_descricao:$('p-seod').value.trim(),atualizado_em:new Date().toISOString()};
- var r=prodAtual&&prodAtual.id?await sb.from('ara_produtos').update(row).eq('id',prodAtual.id):await sb.from('ara_produtos').insert(row);
+ var r=prodAtual&&prodAtual.id?await sb.from('ara_produtos').update(row).eq('id',prodAtual.id).select('id'):await sb.from('ara_produtos').insert(row).select('id');
  if(r.error){toast(r.error.code==='23505'?'Já existe um produto com esse link':'Erro ao salvar',true);return;}
+ if(!r.data||!r.data.length){toast('O produto não foi salvo. Entre de novo no painel e tente outra vez.',true);return;}
  toast('Produto salvo');fechar('painel-prod');carregarTudo();}
 async function excluirProduto(){if(!prodAtual||!confirm('Excluir "'+prodAtual.nome+'"? Isso não pode ser desfeito.'))return;
  var r=await sb.from('ara_produtos').delete().eq('id',prodAtual.id);toast(r.error?'Erro ao excluir':'Produto excluído',!!r.error);if(!r.error){fechar('painel-prod');carregarTudo();}}
@@ -638,7 +644,9 @@ function renderEstoque(){var tb=document.querySelector('#tab-estoque tbody');EST
  html+='<tr class="grupo"><td colspan="7">Arcas</td></tr>';
  ARCAS_K.forEach(function(k){var m=a[k]||{};EST_LINHAS.push({tipo:'arca',k:k});html+=linhaEst(EST_LINHAS.length-1,m.nome||k,'',ca[k],m.preco,m.estoque,m.disponivel!==false,true);});
  tb.innerHTML=html;
- tb.querySelectorAll('input').forEach(function(inp){inp.addEventListener('input',function(){inp.closest('tr').classList.add('mudou');calcLinha(inp.closest('tr'));resumoEst();});});
+ tb.querySelectorAll('input').forEach(function(inp){inp.addEventListener('input',function(){inp.closest('tr').classList.add('mudou');calcLinha(inp.closest('tr'));resumoEst();});
+  inp.addEventListener('change',function(){estAgendar(inp.closest('tr'));});
+  inp.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();inp.blur();}});});
  tb.querySelectorAll('tr[data-i]').forEach(calcLinha);resumoEst();filtrarEstoque();}
 function linhaEst(i,nome,sub,custo,preco,est,disp,mostrarDisp){
  return '<tr data-i="'+i+'"><td class="nome">'+esc(nome)+(sub?'<small>'+esc(sub)+'</small>':'')+'</td>'+
@@ -652,20 +660,40 @@ function calcLinha(tr){var c=num(tr.querySelector('.e-custo').value)||0,pv=num(t
 function resumoEst(){var un=0,custo=0,venda=0,lucro=0;
  document.querySelectorAll('#tab-estoque tr[data-i]').forEach(function(tr){var e=num(tr.querySelector('.e-est').value);if(e==null)return;var c=num(tr.querySelector('.e-custo').value)||0,pv=num(tr.querySelector('.e-preco').value)||0;un+=e;custo+=e*c;venda+=e*pv;lucro+=e*(pv*(1-taxaMP()/100)-c);});
  $('resumo-est').innerHTML='<div><b>'+un+'</b><span>peças em estoque</span></div><div><b>'+brl(custo)+'</b><span>investido em estoque</span></div><div><b>'+brl(venda)+'</b><span>se vender tudo</span></div><div><b>'+brl(lucro)+'</b><span>lucro previsto</span></div>';}
-async function salvarEstoque(){var btn=$('b-salvar-estoque');btn.disabled=true;btn.textContent='Salvando...';var erros=0;
- var porProd={};var arcas=JSON.parse(JSON.stringify(DB.config.arcas||{modelos:{}}));var custosA=Object.assign({},DB.privado.custos_arcas||{});var mudouArca=false;
- document.querySelectorAll('#tab-estoque tr[data-i]').forEach(function(tr){var L=EST_LINHAS[Number(tr.dataset.i)];var c=num(tr.querySelector('.e-custo').value),pv=num(tr.querySelector('.e-preco').value),e=num(tr.querySelector('.e-est').value);var dsp=tr.querySelector('.e-disp');
+/* salva o estoque: com "linhas", só os produtos dessas linhas (salvamento automático ao sair do campo); sem, a tabela inteira */
+async function salvarEstoque(linhas){var auto=Array.isArray(linhas);var btn=$('b-salvar-estoque');if(!auto){btn.disabled=true;btn.textContent='Salvando...';}var erros=0;
+ var todas=[].slice.call(document.querySelectorAll('#tab-estoque tr[data-i]')),trs=todas;
+ if(auto){var pids={},arca=false;linhas.forEach(function(tr){var L=EST_LINHAS[Number(tr.dataset.i)];if(!L)return;if(L.tipo==='arca')arca=true;else pids[L.pid]=1;});
+  trs=todas.filter(function(tr){var L=EST_LINHAS[Number(tr.dataset.i)];return L&&(L.tipo==='arca'?arca:pids[L.pid]);});}
+ trs.forEach(function(tr){tr.classList.add('salvando');tr.classList.remove('erro-salvar');});
+ var porProd={};var arcas=JSON.parse(JSON.stringify(DB.config.arcas||{}));arcas.modelos=arcas.modelos||{};var custosA=Object.assign({},DB.privado.custos_arcas||{});var mudouArca=false;
+ trs.forEach(function(tr){var L=EST_LINHAS[Number(tr.dataset.i)];if(!L)return;var c=num(tr.querySelector('.e-custo').value),pv=num(tr.querySelector('.e-preco').value),e=num(tr.querySelector('.e-est').value);var dsp=tr.querySelector('.e-disp');
   if(L.tipo==='arca'){var m=arcas.modelos[L.k]=arcas.modelos[L.k]||{};if(pv!=null)m.preco=pv;m.estoque=e==null?null:Math.max(0,Math.round(e));if(dsp)m.disponivel=dsp.checked;custosA[L.k]=c||0;mudouArca=true;return;}
   var p=DB.produtos.filter(function(x){return x.id===L.pid;})[0];if(!p)return;var u=porProd[p.id]=porProd[p.id]||{variantes:JSON.parse(JSON.stringify(p.variantes||[])),custos:Object.assign({},p.custos||{})};
   if(dsp)u.disponivel=dsp.checked;
   if(L.tipo==='var'){var v=u.variantes[L.vi];if(pv!=null)v.preco=pv;if(e==null)delete v.estoque;else v.estoque=Math.max(0,Math.round(e));u.custos[v.id]=c||0;if(L.vi===0){u.preco=v.preco;u.custo=c||0;}}
   else if(L.tipo==='multi'){if(pv!=null){u.preco=pv;u.variantes.forEach(function(v){v.preco=pv;});}u.custo=c||0;u.estoque=e==null?null:Math.max(0,Math.round(e));delete u.custos;}
   else{if(pv!=null)u.preco=pv;u.custo=c||0;u.estoque=e==null?null:Math.max(0,Math.round(e));delete u.variantes;delete u.custos;}});
- for(var id in porProd){var r=await sb.from('ara_produtos').update(Object.assign(porProd[id],{atualizado_em:new Date().toISOString()})).eq('id',id);if(r.error)erros++;}
- if(mudouArca){var r1=await sb.from('ara_config').upsert({chave:'arcas',valor:arcas,atualizado_em:new Date().toISOString()});if(r1.error)erros++;
-  var r2=await sb.from('ara_privado').upsert({chave:'custos_arcas',valor:custosA,atualizado_em:new Date().toISOString()});if(r2.error)erros++;}
- var pg=Object.assign({},DB.config.pagamento||{},{taxaPct:taxaMP()});var r3=await sb.from('ara_config').upsert({chave:'pagamento',valor:pg,atualizado_em:new Date().toISOString()});if(r3.error)erros++;
- btn.disabled=false;btn.textContent='Salvar alterações';toast(erros?'Algumas linhas não foram salvas':'Estoque e preços salvos',!!erros);carregarTudo();}
+ var falhou={};
+ for(var id in porProd){var dados=Object.assign({},porProd[id],{atualizado_em:new Date().toISOString()});
+  var r=await sb.from('ara_produtos').update(dados).eq('id',id).select('id');
+  /* sem linha devolvida = o banco não gravou (sessão vencida ou sem permissão): conta como erro, nunca como salvo */
+  if(r.error||!r.data||!r.data.length){erros++;falhou[id]=1;}
+  else{var p0=DB.produtos.filter(function(x){return x.id===id;})[0];if(p0)Object.assign(p0,porProd[id]);}}
+ if(mudouArca){var r1=await sb.from('ara_config').upsert({chave:'arcas',valor:arcas,atualizado_em:new Date().toISOString()}).select('chave');if(r1.error||!r1.data||!r1.data.length)erros++;else DB.config.arcas=arcas;
+  var r2=await sb.from('ara_privado').upsert({chave:'custos_arcas',valor:custosA,atualizado_em:new Date().toISOString()}).select('chave');if(r2.error||!r2.data||!r2.data.length)erros++;else DB.privado.custos_arcas=custosA;}
+ if(!auto){var pg=Object.assign({},DB.config.pagamento||{},{taxaPct:taxaMP()});var r3=await sb.from('ara_config').upsert({chave:'pagamento',valor:pg,atualizado_em:new Date().toISOString()}).select('chave');if(r3.error||!r3.data||!r3.data.length)erros++;else DB.config.pagamento=pg;}
+ trs.forEach(function(tr){var L=EST_LINHAS[Number(tr.dataset.i)];tr.classList.remove('salvando','mudou');
+  if(erros&&(!L||L.tipo==='arca'||falhou[L.pid]))tr.classList.add('erro-salvar');else{tr.classList.add('salvo');setTimeout(function(){tr.classList.remove('salvo');},1800);}});
+ var hora=new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+ $('est-status').textContent=erros?'Não foi possível salvar. Confira a internet e entre de novo no painel.':'Salvo ✓ às '+hora;$('est-status').style.color=erros?'var(--erro)':'';
+ if(erros)toast('Não foi possível salvar. Entre de novo no painel e tente outra vez.',true);else toast(auto?'Salvo ✓':'Estoque e preços salvos');
+ if(!auto){btn.disabled=false;btn.textContent='Salvar tudo';carregarTudo();}else{renderProdutos();}}
+/* salvamento automático: ao sair de um campo alterado (ou marcar "À venda"), a linha é salva na hora */
+var EST_FILA=[],EST_T=null,EST_OCUPADO=false;
+function estAgendar(tr){if(EST_FILA.indexOf(tr)<0)EST_FILA.push(tr);clearTimeout(EST_T);EST_T=setTimeout(estRodar,300);}
+async function estRodar(){if(EST_OCUPADO){EST_T=setTimeout(estRodar,300);return;}if(!EST_FILA.length)return;var lote=EST_FILA.splice(0);EST_OCUPADO=true;try{await salvarEstoque(lote);}finally{EST_OCUPADO=false;}}
+function estPendente(){return EST_FILA.length>0||EST_OCUPADO||!!document.querySelector('#tab-estoque tr.mudou');}
 
 /* ---------- frete ---------- */
 function renderFrete(){var f=DB.config.frete||{regioes:[]};
@@ -868,7 +896,10 @@ pintarSEOPost=ligarSEO('b',function(){return '/blog/'+($('b-slug').value||slugif
 $('b-salvar-arcas').addEventListener('click',salvarArcas);
 $('b-salvar-config').addEventListener('click',salvarConfig);
 $('b-senha').addEventListener('click',trocarSenha);
-$('b-salvar-estoque').addEventListener('click',salvarEstoque);
+$('b-salvar-estoque').addEventListener('click',function(){salvarEstoque();});
+$('e-taxa').addEventListener('change',async function(){var pg=Object.assign({},DB.config.pagamento||{},{taxaPct:taxaMP()});var r=await sb.from('ara_config').upsert({chave:'pagamento',valor:pg,atualizado_em:new Date().toISOString()}).select('chave');if(r.error||!r.data||!r.data.length){toast('Não foi possível salvar a taxa',true);}else{DB.config.pagamento=pg;toast('Taxa salva');}});
+/* nada se perde: se ainda houver alteração sendo salva, o navegador avisa antes de fechar */
+window.addEventListener('beforeunload',function(e){if(estPendente()){e.preventDefault();e.returnValue='';}});
 $('pn-periodo').addEventListener('change',carregarPainel);
 $('b-pn-atualizar').addEventListener('click',carregarPainel);
 $('e-taxa').addEventListener('input',function(){document.querySelectorAll('#tab-estoque tr[data-i]').forEach(calcLinha);resumoEst();});
