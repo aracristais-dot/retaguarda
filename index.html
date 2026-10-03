@@ -95,6 +95,9 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--champ)}
 .busca-p input[type=search]{width:100%;background:var(--noite);border:1px solid rgba(233,220,192,.22);border-radius:10px;padding:11px 12px 11px 42px;font-size:16px}
 .busca-p select{flex:0 1 220px;width:auto}
 .busca-vz{color:var(--nevoa);padding:14px 4px}
+.fora-site{opacity:.55}
+.fora-cab{margin:26px 0 10px;font:500 18px var(--serif);color:var(--nevoa)}
+.aviso-fora{margin:0 0 14px;padding:12px 14px;border-radius:10px;background:rgba(240,182,168,.12);border:1px solid rgba(240,182,168,.5);color:var(--erro);font-size:15px}
 .cat-box{margin:0 0 16px}
 .cat-box>summary{cursor:pointer;font:500 20px var(--serif);color:var(--champ);list-style:none}
 .cat-box>summary::-webkit-details-marker{display:none}
@@ -302,6 +305,7 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--champ)}
 
 <div class="painel" id="painel-prod" role="dialog" aria-modal="true" aria-labelledby="pp-t"><div class="caixa">
   <div class="hd"><h3 id="pp-t">Produto</h3><button class="x" type="button" data-fechar="painel-prod" aria-label="Fechar" style="color:var(--champ)">×</button></div>
+  <p class="aviso-fora" id="p-fora" hidden>Este produto está <b>fora do site</b>: nada do que você mudar aqui aparece na loja. Para mostrar, marque "Mostrar no site" lá embaixo.</p>
   <div class="grid2">
     <div class="campo"><label for="p-nome">Nome</label><input id="p-nome" type="text"></div>
     <div class="campo"><label for="p-slug">Endereço (link)</label><input id="p-slug" type="text"><small id="p-slug-prev"></small></div>
@@ -422,13 +426,13 @@ function abrirAba(a){document.querySelectorAll('#abas button').forEach(function(
 
 /* ---------- carregar ---------- */
 async function carregarTudo(){var r=await Promise.allSettled([sb.from('ara_produtos').select('*').order('ordem'),sb.from('ara_posts').select('*').order('ordem'),sb.from('ara_config').select('*'),sb.from('ara_pedidos').select('*').order('criado_em',{ascending:false}).limit(300),sb.from('ara_privado').select('*'),sb.from('ara_leads').select('*').order('criado_em',{ascending:false}).limit(5000)]);
- if(r[0].status==='fulfilled'&&!r[0].value.error)DB.produtos=(r[0].value.data||[]).sort(function(a,b){return (catOrdem(a)-catOrdem(b))||((a.ordem||0)-(b.ordem||0));});
+ if(r[0].status==='fulfilled'&&!r[0].value.error)DB.produtos=(r[0].value.data||[]).sort(ordemProd);
  if(r[1].status==='fulfilled'&&!r[1].value.error)DB.posts=r[1].value.data||[];
  if(r[2].status==='fulfilled'&&!r[2].value.error){DB.config={};(r[2].value.data||[]).forEach(function(x){DB.config[x.chave]=x.valor;});}
  if(r[3].status==='fulfilled'&&!r[3].value.error)DB.pedidos=r[3].value.data||[];
  if(r[4].status==='fulfilled'&&!r[4].value.error){DB.privado={};(r[4].value.data||[]).forEach(function(x){DB.privado[x.chave]=x.valor;});}
  if(r[5]&&r[5].status==='fulfilled'&&!r[5].value.error)DB.leads=r[5].value.data||[];
- DB.produtos.sort(function(a,b){return (catOrdem(a)-catOrdem(b))||((a.ordem||0)-(b.ordem||0));});
+ DB.produtos.sort(ordemProd);
  renderCategorias();renderPedidos();renderProdutos();renderPosts();renderArcas();renderConfig();renderEstoque();renderFrete();renderPagamento();renderCampanha();carregarPainel();sinoAtualizar(SINO.chaves!=null);sinoIniciar();verificarPendentes();}
 
 /* ---------- pedidos ---------- */
@@ -467,7 +471,7 @@ function renderProdutos(){var el=$('lista-produtos');
   /* preço editável direto na lista, sem abrir o produto */
   var preco='<div class="pr-rap">'+(vs.length?vs.map(function(v,j){return '<label><span>'+esc(v.nome)+' R$</span><input type="text" inputmode="decimal" autocomplete="off" class="preco-in" data-pr="'+i+'" data-pv="'+j+'" value="'+mostrarPreco(v.preco)+'"></label>';}).join('')
    :'<label><span>Preço R$</span><input type="text" inputmode="decimal" autocomplete="off" class="preco-in" data-pr="'+i+'" value="'+mostrarPreco(p.preco)+'"></label>')+'<button class="btn peq" type="button" data-prs="'+i+'" hidden>Salvar preço</button></div>';
-  return '<div class="card linha-p" data-busca="'+esc(normBusca(p.nome+' '+p.slug))+'" data-cat="'+esc(p.categoria||'acessorio')+'"><img src="'+esc(p.foto_url||fotoPadrao(p.slug))+'" alt=""><div><div class="t">'+esc(p.nome)+'</div>'+preco+'<div style="margin-top:6px"><span class="pill '+(p.disponivel?'ok':'no')+'">'+(p.disponivel?'Em estoque':'Esgotado')+'</span><span class="pill">'+(p.ativo?'No site':'Oculto')+'</span>'+'<span class="pill">'+esc((catDe(p.categoria)||{nome:'Sem categoria'}).nome)+'</span>'+'</div></div><button class="btn sec peq" type="button" data-editp="'+i+'">Editar</button></div>';}).join('');
+  return (p.ativo===false&&(i===0||DB.produtos[i-1].ativo!==false)?'<div class="fora-cab" data-busca="" data-cat="">Fora do site (não aparecem na loja)</div>':'')+'<div class="card linha-p'+(p.ativo===false?' fora-site':'')+'" data-busca="'+esc(normBusca(p.nome+' '+p.slug))+'" data-cat="'+esc(p.categoria||'acessorio')+'"><img src="'+esc(p.foto_url||fotoPadrao(p.slug))+'" alt=""><div><div class="t">'+esc(p.nome)+'</div>'+preco+'<div style="margin-top:6px"><span class="pill '+(p.disponivel?'ok':'no')+'">'+(p.disponivel?'Em estoque':'Esgotado')+'</span><span class="pill">'+(p.ativo?'No site':'Fora do site')+'</span>'+'<span class="pill">'+esc((catDe(p.categoria)||{nome:'Sem categoria'}).nome)+'</span>'+'</div></div><button class="btn sec peq" type="button" data-editp="'+i+'">Editar</button></div>';}).join('');
  el.querySelectorAll('[data-editp]').forEach(function(b){b.addEventListener('click',function(){abrirProduto(DB.produtos[Number(b.dataset.editp)]);});});
  el.querySelectorAll('[data-pr]').forEach(function(inp){inp.addEventListener('input',function(){el.querySelector('[data-prs="'+inp.dataset.pr+'"]').hidden=false;});
   inp.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();inp.blur();salvarPrecoRapido(Number(inp.dataset.pr));}});});
@@ -479,6 +483,8 @@ function normBusca(t){return String(t||'').normalize('NFD').replace(/[\u0300-\u0
 var CATS_PADRAO=[{id:'cristal',nome:'Cristais',intro:'Os cristais se formam ao longo de milhões de anos e acompanham a humanidade desde os sumérios. [Conheça essa história](/historia#linha-do-tempo), que também dá nome às peças da ARA.'},{id:'acessorio',nome:'Acessórios e complementos',intro:''},{id:'incenso',nome:'Incensos',intro:'Incensos indianos para perfumar a casa e marcar o início da meditação. Cada aroma é um produto: escolha os seus e adicione ao carrinho.'}];
 function cats(){var c=DB.config&&DB.config.categorias;return Array.isArray(c)&&c.length?c:CATS_PADRAO;}
 function catDe(id){return cats().filter(function(c){return c.id===id;})[0]||null;}
+/* lista do painel: o que está no site primeiro, na ordem das categorias; o que está fora do site vai para o fim */
+function ordemProd(a,b){return ((a.ativo===false)-(b.ativo===false))||(catOrdem(a)-catOrdem(b))||((a.ordem||0)-(b.ordem||0));}
 function catOrdem(p){var cs=cats();for(var i=0;i<cs.length;i++){if(cs[i].id===(p&&p.categoria))return i;}return cs.length;}
 function preencherSelectsCat(){var cs=cats();
  var pc=$('p-cat'),v=pc.value;pc.innerHTML=cs.map(function(c){return '<option value="'+esc(c.id)+'">'+esc(c.nome)+'</option>';}).join('');if(v&&catDe(v))pc.value=v;
@@ -503,7 +509,7 @@ async function salvarCategorias(){var usados={},lista=[];
  if(!lista.length){toast('A loja precisa de pelo menos uma categoria',true);return;}
  var r=await sb.from('ara_config').upsert({chave:'categorias',valor:lista,atualizado_em:new Date().toISOString()});
  if(r.error){toast('Erro ao salvar as categorias',true);return;}
- DB.config.categorias=lista;DB.produtos.sort(function(a,b){return (catOrdem(a)-catOrdem(b))||((a.ordem||0)-(b.ordem||0));});
+ DB.config.categorias=lista;DB.produtos.sort(ordemProd);
  renderCategorias();renderProdutos();renderEstoque();toast('Categorias salvas. O site já mostra a nova ordem.');}
 function filtrarProdutos(){var q=normBusca($('busca-prod').value).trim().split(/\s+/).filter(Boolean),c=$('filtro-cat').value,n=0;
  document.querySelectorAll('#lista-produtos [data-busca]').forEach(function(el){var ok=(!c||el.dataset.cat===c)&&q.every(function(w){return el.dataset.busca.indexOf(w)>=0;});el.hidden=!ok;if(ok)n++;});
@@ -530,7 +536,7 @@ function abrirProduto(p){prodAtual=p||null;p=p||{nome:'',slug:'',tag:'',frase:''
  $('pp-t').textContent=prodAtual?'Editar produto':'Novo produto';
  $('p-nome').value=p.nome;$('p-slug').value=p.slug;$('p-tag').value=p.tag||'';$('p-preco').value=mostrarPreco(p.preco);$('p-frase').value=p.frase||'';$('p-texto').value=p.texto||'';
  $('p-rotulo').value=p.rotulo||'';$('p-vars').innerHTML='';(p.variantes||[]).forEach(linhaVar);$('p-dets').innerHTML='';(p.detalhes||[]).forEach(linhaDet);
- $('p-uso').value=p.uso||'';$('p-cuidados').value=p.cuidados||'';$('p-disp').checked=!!p.disponivel;$('p-ativo').checked=p.ativo!==false;$('p-semadd').checked=!!p.sem_adicional;$('p-ordem').value=p.ordem||0;preencherSelectsCat();$('p-cat').value=catDe(p.categoria)?p.categoria:(catDe('acessorio')?'acessorio':cats()[0].id);
+ $('p-uso').value=p.uso||'';$('p-cuidados').value=p.cuidados||'';$('p-disp').checked=!!p.disponivel;$('p-ativo').checked=p.ativo!==false;$('p-semadd').checked=!!p.sem_adicional;$('p-ordem').value=p.ordem||0;$('p-fora').hidden=p.ativo!==false;preencherSelectsCat();$('p-cat').value=catDe(p.categoria)?p.categoria:(catDe('acessorio')?'acessorio':cats()[0].id);
  $('p-seot').value=p.seo_titulo||'';$('p-seod').value=p.seo_descricao||'';fotoProd=p.foto_url||'';$('p-foto-prev').src=fotoProd||fotoPadrao(p.slug);fotosExtra=[(p.fotos||[])[0]||'',(p.fotos||[])[1]||''];pintarFotosExtra();
  $('p-excluir').style.display=prodAtual?'':'none';slugPrev();pintarSEOProd();$('painel-prod').classList.add('on');document.body.style.overflow='hidden';}
 function slugPrev(){$('p-slug-prev').textContent='Link: '+siteBase()+'/loja/'+($('p-slug').value||slugify($('p-nome').value));}
@@ -870,6 +876,7 @@ $('b-salvar-frete').addEventListener('click',salvarFrete);
 $('b-add-regiao').addEventListener('click',function(){linhaRegiao({});});
 $('fr-teste').addEventListener('input',testarCep);
 $('b-salvar-mp').addEventListener('click',salvarPagamento);
+$('p-ativo').addEventListener('change',function(){$('p-fora').hidden=this.checked;});
 $('b-cat-nova').addEventListener('click',function(){CAT_EDIT.push({id:'',nome:'',intro:''});pintarCats();var x=document.querySelector('[data-cn="'+(CAT_EDIT.length-1)+'"]');if(x)x.focus();});$('b-cat-salvar').addEventListener('click',salvarCategorias);preencherSelectsCat();
 $('busca-prod').addEventListener('input',filtrarProdutos);$('filtro-cat').addEventListener('change',filtrarProdutos);$('busca-est').addEventListener('input',filtrarEstoque);
 $('b-mp-testar').addEventListener('click',testarMP);
