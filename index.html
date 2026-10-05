@@ -110,6 +110,11 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--champ)}
 .cat-linha textarea{margin-top:8px;min-height:60px}
 .cat-linha small{display:block;margin-top:6px;color:var(--nevoa);font-size:13px}
 .cat-acoes{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+.selos{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.selo-b{border:1px solid var(--linha);background:none;color:inherit;border-radius:999px;padding:6px 12px;font:inherit;font-size:13px;cursor:pointer;min-height:34px}
+.selo-b.on{background:#e9dcc0;border-color:#e9dcc0;color:#0d1b2a}
+.estrela{display:flex;align-items:center;gap:10px;margin-top:14px;padding:12px 14px;border:1px solid var(--linha);border-radius:12px;cursor:pointer}
+.estrela input{width:20px;height:20px;accent-color:#e9dcc0}
 .chk{display:flex;align-items:center;gap:10px;min-height:40px;cursor:pointer}
 .chk input{width:20px;height:20px;accent-color:#e9dcc0}
 .bloco{border-top:1px solid var(--linha);padding-top:18px;margin-top:18px;display:grid;gap:14px}
@@ -319,10 +324,11 @@ input:focus,select:focus,textarea:focus{outline:none;border-color:var(--champ)}
   <div class="grid2">
     <div class="campo"><label for="p-nome">Nome</label><input id="p-nome" type="text"></div>
     <div class="campo"><label for="p-slug">Endereço (link)</label><input id="p-slug" type="text"><small id="p-slug-prev"></small></div>
-    <div class="campo"><label for="p-tag">Selo</label><input id="p-tag" type="text" placeholder="Lançamento, Exclusivo, Poucas unidades"></div>
+    <div class="campo"><label for="p-tag">Selo</label><input id="p-tag" type="text" placeholder="Clique nos botões abaixo ou escreva"><div class="selos" id="p-selos" aria-label="Selos rápidos"></div><small>Peça única também deixa o estoque em 1.</small></div>
     <div class="campo"><label for="p-preco">Preço (R$)</label><input id="p-preco" type="text" inputmode="decimal" autocomplete="off" class="preco-in" placeholder="0,00"><small>Se tiver variações, vale o preço de cada variação.</small></div>
   </div>
-  <div class="campo" style="margin-top:14px"><label for="p-frase">Frase de destaque</label><input id="p-frase" type="text"></div>
+  <label class="estrela"><input type="checkbox" id="p-destaque"> ⭐ Mais desejada: aparece na página inicial do site</label>
+  <div class="campo" style="margin-top:14px"><label for="p-frase">Frase de destaque</label><input id="p-frase" type="text"><small>Se ficar vazia, preenchemos sozinhos ao salvar, junto com os textos do Google.</small></div>
   <div class="campo" style="margin-top:14px"><label for="p-texto">Descrição</label><textarea id="p-texto"></textarea></div>
   <div class="bloco"><h3>Fotos</h3>
     <small class="muted" style="color:var(--nevoa)">Até três fotos. A primeira é a principal; as outras mostram a peça de outros ângulos.</small>
@@ -490,7 +496,7 @@ function renderProdutos(){var el=$('lista-produtos');
   /* preço editável direto na lista, sem abrir o produto */
   var preco='<div class="pr-rap">'+(vs.length?vs.map(function(v,j){return '<label><span>'+esc(v.nome)+' R$</span><input type="text" inputmode="decimal" autocomplete="off" class="preco-in" data-pr="'+i+'" data-pv="'+j+'" value="'+mostrarPreco(v.preco)+'"></label>';}).join('')
    :'<label><span>Preço R$</span><input type="text" inputmode="decimal" autocomplete="off" class="preco-in" data-pr="'+i+'" value="'+mostrarPreco(p.preco)+'"></label>')+'<button class="btn peq" type="button" data-prs="'+i+'" hidden>Salvar preço</button></div>';
-  return (p.ativo===false&&(i===0||DB.produtos[i-1].ativo!==false)?'<div class="fora-cab" data-busca="" data-cat="">Fora do site (não aparecem na loja)</div>':'')+'<div class="card linha-p'+(p.ativo===false?' fora-site':'')+'" data-busca="'+esc(normBusca(p.nome+' '+p.slug))+'" data-cat="'+esc(p.categoria||'acessorio')+'"><img src="'+esc(p.foto_url||fotoPadrao(p.slug))+'" alt=""><div><div class="t">'+esc(p.nome)+'</div>'+preco+'<div style="margin-top:6px"><span class="pill '+(p.disponivel?'ok':'no')+'">'+(p.disponivel?'Em estoque':'Esgotado')+'</span><span class="pill">'+(p.ativo?'No site':'Fora do site')+'</span>'+'<span class="pill">'+esc((catDe(p.categoria)||{nome:'Sem categoria'}).nome)+'</span>'+'</div></div><button class="btn sec peq" type="button" data-editp="'+i+'">Editar</button></div>';}).join('');
+  return (p.ativo===false&&(i===0||DB.produtos[i-1].ativo!==false)?'<div class="fora-cab" data-busca="" data-cat="">Fora do site (não aparecem na loja)</div>':'')+'<div class="card linha-p'+(p.ativo===false?' fora-site':'')+'" data-busca="'+esc(normBusca(p.nome+' '+p.slug))+'" data-cat="'+esc(p.categoria||'acessorio')+'"><img src="'+esc(p.foto_url||fotoPadrao(p.slug))+'" alt=""><div><div class="t">'+esc(p.nome)+'</div>'+preco+'<div style="margin-top:6px"><span class="pill '+(p.disponivel?'ok':'no')+'">'+(p.disponivel?'Em estoque':'Esgotado')+'</span>'+(p.destaque?'<span class="pill">⭐ Mais desejada</span>':'')+'<span class="pill">'+(p.ativo?'No site':'Fora do site')+'</span>'+'<span class="pill">'+esc((catDe(p.categoria)||{nome:'Sem categoria'}).nome)+'</span>'+'</div></div><button class="btn sec peq" type="button" data-editp="'+i+'">Editar</button></div>';}).join('');
  el.querySelectorAll('[data-editp]').forEach(function(b){b.addEventListener('click',function(){abrirProduto(DB.produtos[Number(b.dataset.editp)]);});});
  el.querySelectorAll('[data-pr]').forEach(function(inp){inp.addEventListener('input',function(){el.querySelector('[data-prs="'+inp.dataset.pr+'"]').hidden=false;});
   inp.addEventListener('change',function(){salvarPrecoRapido(Number(inp.dataset.pr));});
@@ -551,24 +557,38 @@ function linhaVar(v){var d=document.createElement('div');d.className='row3';d.in
  d.querySelector('.x').addEventListener('click',function(){d.remove();});$('p-vars').appendChild(d);}
 function linhaDet(x){var d=document.createElement('div');d.className='row2';d.innerHTML='<input type="text" placeholder="Item (ex.: Material)" class="d-k"><input type="text" placeholder="Valor" class="d-v"><button class="x" type="button" aria-label="Remover">×</button>';
  d.querySelector('.d-k').value=x.k||'';d.querySelector('.d-v').value=x.v||'';d.querySelector('.x').addEventListener('click',function(){d.remove();});$('p-dets').appendChild(d);}
+/* selos com um clique: cada botão liga e desliga a palavra no campo Selo */
+var SELOS=['Peça única','Exclusivo','Lançamento','Poucas unidades','Mais procurado','Feito à mão','Presente'];
+function selosAtuais(){return $('p-tag').value.split(/\s*[·,|]\s*/).map(function(x){return x.trim();}).filter(Boolean);}
+function temSelo(n){return selosAtuais().some(function(x){return normBusca(x)===normBusca(n);});}
+function pintarSelos(){$('p-selos').innerHTML=SELOS.map(function(n){return '<button type="button" class="selo-b'+(temSelo(n)?' on':'')+'" data-selo="'+esc(n)+'" aria-pressed="'+temSelo(n)+'">'+esc(n)+'</button>';}).join('');}
+function alternarSelo(n){var a=selosAtuais();a=temSelo(n)?a.filter(function(x){return normBusca(x)!==normBusca(n);}):a.concat([n]);$('p-tag').value=a.join(' · ');pintarSelos();}
 var pintarSEOProd=null;
 function abrirProduto(p){prodAtual=p||null;p=p||{nome:'',slug:'',tag:'',frase:'',texto:'',preco:0,rotulo:'',variantes:[],detalhes:[],uso:'',cuidados:'',foto_url:'',disponivel:true,ativo:true,sem_adicional:false,ordem:DB.produtos.length,seo_titulo:'',seo_descricao:'',categoria:'acessorio'};
  $('pp-t').textContent=prodAtual?'Editar produto':'Novo produto';
  $('p-nome').value=p.nome;$('p-slug').value=p.slug;$('p-tag').value=p.tag||'';$('p-preco').value=mostrarPreco(p.preco);$('p-frase').value=p.frase||'';$('p-texto').value=p.texto||'';
  $('p-rotulo').value=p.rotulo||'';$('p-vars').innerHTML='';(p.variantes||[]).forEach(linhaVar);$('p-dets').innerHTML='';(p.detalhes||[]).forEach(linhaDet);
  $('p-uso').value=p.uso||'';$('p-cuidados').value=p.cuidados||'';$('p-disp').checked=!!p.disponivel;$('p-ativo').checked=p.ativo!==false;$('p-semadd').checked=!!p.sem_adicional;$('p-ordem').value=p.ordem||0;$('p-fora').hidden=p.ativo!==false;preencherSelectsCat();$('p-cat').value=catDe(p.categoria)?p.categoria:(catDe('acessorio')?'acessorio':cats()[0].id);
- $('p-seot').value=p.seo_titulo||'';$('p-seod').value=p.seo_descricao||'';fotoProd=p.foto_url||'';$('p-foto-prev').src=fotoProd||fotoPadrao(p.slug);fotosExtra=[(p.fotos||[])[0]||'',(p.fotos||[])[1]||''];pintarFotosExtra();
+ $('p-destaque').checked=!!p.destaque;pintarSelos();$('p-seot').value=p.seo_titulo||'';$('p-seod').value=p.seo_descricao||'';fotoProd=p.foto_url||'';$('p-foto-prev').src=fotoProd||fotoPadrao(p.slug);fotosExtra=[(p.fotos||[])[0]||'',(p.fotos||[])[1]||''];pintarFotosExtra();
  $('sug-box').hidden=true;$('p-excluir').style.display=prodAtual?'':'none';slugPrev();pintarSEOProd();$('painel-prod').classList.add('on');document.body.style.overflow='hidden';}
 function slugPrev(){$('p-slug-prev').textContent='Link: '+siteBase()+'/loja/'+($('p-slug').value||slugify($('p-nome').value));}
 async function salvarProduto(){var nome=$('p-nome').value.trim();if(!nome){toast('Escreva o nome do produto',true);return;}
  var slug=slugify($('p-slug').value||nome);
  var vars=[].map.call($('p-vars').querySelectorAll('.row3'),function(d,i){var n=d.querySelector('.v-nome').value.trim();var o={id:d.dataset.id||slugify(n)||('v'+i),nome:n,preco:lerPreco(d.querySelector('.v-preco').value)||0};var pe=d.querySelector('.v-pedras').value.trim();if(pe)o.pedras=pe;if(d.dataset.img)o.img=d.dataset.img;if(d.dataset.estoque!=='')o.estoque=Number(d.dataset.estoque);return o;}).filter(function(v){return v.nome;});
  var dets=[].map.call($('p-dets').querySelectorAll('.row2'),function(d){return {k:d.querySelector('.d-k').value.trim(),v:d.querySelector('.d-v').value.trim()};}).filter(function(x){return x.k||x.v;});
+ /* textos do Google que ficaram vazios são preenchidos sozinhos com a sugestão do assistente */
+ var auto=[];if(!$('p-frase').value.trim()||!$('p-seot').value.trim()||!$('p-seod').value.trim()){var sg=sugerirGoogle(0);
+  if(!$('p-frase').value.trim()&&sg.frase){$('p-frase').value=sg.frase;auto.push('frase');}
+  if(!$('p-seot').value.trim()){$('p-seot').value=sg.titulo;auto.push('título do Google');}
+  if(!$('p-seod').value.trim()){$('p-seod').value=sg.descricao;auto.push('descrição do Google');}}
  var row={nome:nome,slug:slug,tag:$('p-tag').value.trim(),frase:$('p-frase').value.trim(),texto:$('p-texto').value.trim(),preco:lerPreco($('p-preco').value)||(vars[0]?vars[0].preco:0),rotulo:$('p-rotulo').value.trim(),variantes:vars,detalhes:dets,uso:$('p-uso').value.trim(),cuidados:$('p-cuidados').value.trim(),foto_url:fotoProd||'',fotos:fotosExtra.filter(Boolean),disponivel:$('p-disp').checked,ativo:$('p-ativo').checked,sem_adicional:$('p-semadd').checked,categoria:$('p-cat').value,ordem:Number($('p-ordem').value||0),seo_titulo:$('p-seot').value.trim(),seo_descricao:$('p-seod').value.trim(),atualizado_em:new Date().toISOString()};
+ row.destaque=$('p-destaque').checked;
+ /* peça única: uma unidade em estoque (se o estoque ainda não foi definido) */
+ if(temSelo('Peça única')&&!vars.length&&(!prodAtual||prodAtual.estoque==null))row.estoque=1;
  var r=prodAtual&&prodAtual.id?await sb.from('ara_produtos').update(row).eq('id',prodAtual.id).select('id'):await sb.from('ara_produtos').insert(row).select('id');
  if(r.error){toast(r.error.code==='23505'?'Já existe um produto com esse link':'Erro ao salvar',true);return;}
  if(!r.data||!r.data.length){toast('O produto não foi salvo. Entre de novo no painel e tente outra vez.',true);return;}
- toast('Produto salvo');fechar('painel-prod');carregarTudo();}
+ toast(auto.length?'Produto salvo. Preenchidos sozinhos: '+auto.join(', ')+'.':'Produto salvo');fechar('painel-prod');carregarTudo();}
 async function excluirProduto(){if(!prodAtual||!confirm('Excluir "'+prodAtual.nome+'"? Isso não pode ser desfeito.'))return;
  var r=await sb.from('ara_produtos').delete().eq('id',prodAtual.id);toast(r.error?'Erro ao excluir':'Produto excluído',!!r.error);if(!r.error){fechar('painel-prod');carregarTudo();}}
 
@@ -899,6 +919,8 @@ $('p-foto').addEventListener('change',async function(e){var f=e.target.files[0];
  $('p-foto'+n).addEventListener('change',async function(e){var f=e.target.files[0];if(!f)return;try{fotosExtra[i]=await enviarFoto(f,'produtos',$('p-nome').value+'-'+n);pintarFotosExtra();}catch(err){}e.target.value='';});
  $('p-foto'+n+'-rm').addEventListener('click',function(){fotosExtra[i]='';pintarFotosExtra();});});
 $('p-foto-rm').addEventListener('click',function(){fotoProd='';$('p-foto-prev').src=fotoPadrao(slugify($('p-slug').value||$('p-nome').value));});
+$('p-selos').addEventListener('click',function(e){var b=e.target.closest('[data-selo]');if(b)alternarSelo(b.dataset.selo);});
+$('p-tag').addEventListener('input',pintarSelos);
 pintarSEOProd=ligarSEO('p',function(){return '/loja/'+($('p-slug').value||slugify($('p-nome').value));});
 /* ---------- assistente de textos do Google: monta frase, título e descrição a partir do cadastro ---------- */
 var SUG={v:0,atual:null};
